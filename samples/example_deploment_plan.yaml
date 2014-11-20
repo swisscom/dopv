@@ -1,0 +1,107 @@
+clouds:
+  management:
+    type: rhev
+    endpoint: https://rhev.swisscom.ch/api/
+    credentials:
+      username: azuber
+      password: dhahwuzq38q2ou32qd
+  lamp:
+    type: openstack
+    endpoint: https://openstack.swisscom.ch/api/
+    credentials:
+      username: azuber
+      password: dhahwuzq38q2ou32qd
+
+nodes:
+
+  mysql01.example.com:
+    cloud: lamp
+    image: rhel6
+    nets:
+      int: dhcp
+    flavor: medium
+    disks:
+      database: 30G
+
+  web01.example.com:
+    cloud: lamp
+    image: rhel6
+    nets:
+      int: dhcp
+    flavor: small
+
+  web01.example.com:
+    cloud: lamp
+    image: rhel6
+    nets:
+      int: dhcp
+    flavor: small
+
+  haproxy01.example.com:
+    cloud: lamp
+    image: rhel6
+    nets:
+      int: dhcp
+    flavor: small
+
+  haproxy02.example.com:
+    cloud: lamp
+    image: rhel6
+    nets:
+      int: dhcp
+    flavor: small
+
+configuration:
+  nodes:
+    mysql01.example.com:
+      sc_role: mysql
+    web01.example.com:
+      sc_role: httpd
+    web02.example.com:
+      sc_role: httpd
+    haproxy01.example.com:
+      sc_role: haproxy
+    haproxy01.example.com:
+      sc_role: haproxy
+  roles:
+    mysql:
+      mysql::default_database:
+         name: mydatabase
+         user: myuser
+         password: blabla
+
+plan:
+  max_in_flight: 3
+
+steps:
+
+    - name: setup_database
+      nodes:
+          - mysql01
+      command: run_puppet
+
+    - name: setup_webserver
+      roles:
+          - httpd
+      command: run_puppet
+
+    - name: setup_haproxy
+      roles:
+          - haproxy
+      command: run_puppet
+
+    - name: setup_haproxy
+      nodes: ALL
+      command: reboot
+
+    - name: fake_run
+      nodes: all
+      command: /tmp/test
+      arguments: {}
+      env:
+          ENV1: foo
+          ENV2: bla
+      node_verify_cmd:  (runs on the node to verify if the command needs to run)
+      dop_verify_cmd: (runs on dop to verify the state)
+      expect_exit_code: 0 / [ \d ] / any
+

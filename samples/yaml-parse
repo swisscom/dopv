@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+
+#
+# YAML File sample
+#
+
+require 'thor'
+require 'yaml'
+
+
+class YamlCLI < Thor
+	desc "load <yaml_file>", "Loads and parses YAML files and prints the resulting hash"
+
+
+	def load(file)
+		yhash = YAML.load_file(file)
+		puts "Parsed YAML file #{file}:", yhash
+	end
+end
+
+YamlCLI.start(ARGV)
