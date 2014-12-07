@@ -12,9 +12,17 @@ development, it is kept as a part of `dopv`.
 1. `rbovirt` of version 0.0.29
 2. `fog` of version 1.25.0
 
-### Installation of rbovirt
+### Cloudinit for `rbovirt`
 
 	$ cp rbovirt/lib/client/vm_api.rb ${HOME}/.gem/ruby/gems/rbovirt-0.0.29/lib/client/vm_api.rb
 	$ cp rbovirt/lib/ovirt/cloudinit.rb ${HOME}/.gem/ruby/gems/rbovirt-0.0.29/lib/ovirt/cloudinit.rb
 	$ cp rbovirt/lib/rbovirt.rb ${HOME}/.gem/ruby/gems/rbovirt-0.0.29/lib/rbovirt.rb
+
+
+### Cloudinit for `fog`
+	$ cp fog/lib/fog/ovirt/compute.rb ${HOME}/.gem/ruby/gems/fog-1.25.0/lib/fog/ovirt/compute.rb
+	$ cp fog/lib/fog/ovirt/requests/compute/cloudinit_vm.rb ${HOME}/.gem/ruby/gems/fog-1.25.0/lib/fog/ovirt/requests/compute/cloudinit_vm.rb
+	$ cp fog/lib/fog/ovirt/models/compute/server.rb ${HOME}/.gem/ruby/gems/fog-1.25.0/lib/fog/ovirt/models/compute/server.rb
+	$ cp fog/lib/fog/ovirt/models/compute/servers.rb ${HOME}/.gem/ruby/gems/fog-1.25.0/lib/fog/ovirt/models/compute/servers.rb
+
 
