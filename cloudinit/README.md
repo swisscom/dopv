@@ -15,6 +15,6 @@ development, it is kept as a part of `dopv`.
 ### Installation of rbovirt
 
 	$ cp rbovirt/lib/client/vm_api.rb ${HOME}/.gem/ruby/gems/rbovirt-0.0.29/lib/client/vm_api.rb
-	$ cp rbovirt/lib/ovirt/cloudinit.rb ${HOME}/.gem/ruby/gems/rbovirt-0.0.29/ovirt/cloudinit.rb
-	$ cp rbovirt/lib/ovirt/vm.rb ${HOME}/.gem/ruby/gems/rbovirt-0.0.29/ovirt/vm.rb
+	$ cp rbovirt/lib/ovirt/cloudinit.rb ${HOME}/.gem/ruby/gems/rbovirt-0.0.29/lib/ovirt/cloudinit.rb
+	$ cp rbovirt/lib/rbovirt.rb ${HOME}/.gem/ruby/gems/rbovirt-0.0.29/lib/rbovirt.rb
 
