@@ -33,7 +33,7 @@ module OVIRT
               users {
                 opts[:users].each do |user|
                   user_ {
-                    user_name(user[:name]) if user[:name]
+                    user_name(user[:user_name]) if user[:user_name]
                     password(user[:password]) if user[:password]
                   } if user.is_a?(Hash)
                 end
@@ -113,3 +113,5 @@ module OVIRT
 
   end
 end
+
+# vim:ts=2:sw=2:expandtab
