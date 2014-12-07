@@ -25,4 +25,12 @@ development, it is kept as a part of `dopv`.
 	$ cp fog/lib/fog/ovirt/models/compute/server.rb ${HOME}/.gem/ruby/gems/fog-1.25.0/lib/fog/ovirt/models/compute/server.rb
 	$ cp fog/lib/fog/ovirt/models/compute/servers.rb ${HOME}/.gem/ruby/gems/fog-1.25.0/lib/fog/ovirt/models/compute/servers.rb
 
+## TODO
 
+1. `rbovirt`
+ - Add RHEV version check and raise an exception if RHEV version does not
+ support cloud init (AFAIR, only >= 3.4 do).
+ - Push to upstream.
+
+2. `fog`
+ - Push to upstream.
