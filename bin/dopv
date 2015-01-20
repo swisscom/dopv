@@ -4,6 +4,7 @@
 # DOPv command line client
 #
 
-require 'dopv/cli'
+require 'dopv'
 
-Dopi::Cli::Start(ARGV)
+plan=Dopv::Plan.load_from_file('/home/pdilung/dopv/samples/plans/modified-deployment-plan.yaml')
+puts plan.nodes
