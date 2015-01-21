@@ -1,3 +1,7 @@
+require 'dopv/cloud/providers/ovirt'
+require 'dopv/cloud/providers/openstack'
+require 'dopv/cloud/providers/vsphere'
+
 module Dopv
   module Cloud
     SUPPORTED_TYPES = {
@@ -20,22 +24,5 @@ module Dopv
         false
       end
     end
-
-    def self.get_provider(clouds, name)
-      SUPPORTED_TYPES[clouds[name]['type'].to_sym]
-    end
-
-    def self.get_username(clouds, name)
-      clouds[name]['credentials']['username']
-    end
-
-    def self.get_password(clouds, name)
-      clouds[name]['credentials']['username']
-    end
-    
-    def self.get_url(clouds, name)
-      clouds[name]['endpoint']
-    end
-
   end
 end
