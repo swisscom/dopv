@@ -1,35 +1,36 @@
-require 'dopv/cloud'
 require 'yaml'
 require 'ipaddr'
+require 'pry'
 
 module Dopv
   class PlanError < StandardError; end
 
   class Plan
-    attr_reader :nodes
-
     def self.load(plan)
-      new(plan)
-    end
-
-    def self.load_from_file(file_name)
-      new(YAML.load_file(file_name))
+      case plan
+      when String
+        new(YAML.load_file(plan))
+      when Hash
+        new(plan)
+      else
+        raise PlanError, "Plan must be of String or Hash type"
+      end
     end
 
     def initialize(plan)
       @nodes = []
       @plan = plan
-      
+
       validate
 
       clouds = @plan['clouds']
       @plan['nodes'].each do |n, d|
         node = {}
         # Cloud provider definitions
-        node[:provider] = Dopv::Cloud.get_provider(clouds, d['cloud'])
-        node[:provider_username] = Dopv::Cloud.get_username(clouds, d['cloud'])
-        node[:provider_password] = Dopv::Cloud.get_password(clouds, d['cloud'])
-        node[:provider_url] = Dopv::Cloud.get_url(clouds, d['cloud'])
+        node[:provider] = Cloud::SUPPORTED_TYPES[@plan['clouds'][d['cloud']]['type'].to_sym]
+        node[:provider_username] = @plan['clouds'][d['cloud']]['credentials']['username']
+        node[:provider_password] = @plan['clouds'][d['cloud']]['credentials']['password']
+        node[:provider_endpoint] = @plan['clouds'][d['cloud']]['endpoint']
         # Node definitions
         node[:nodename] = n
         node[:image]    = d['image']
@@ -50,13 +51,20 @@ module Dopv
         end
         # DNS
         node[:dns] = d['dns'] unless d['dns'].nil?
-        
+
         @nodes << node
       end
     end
 
+    def execute
+      @nodes.each { |node| 
+        Object.const_get("Dopv::Cloud::#{node[:provider].capitalize}::Node").bootstrap(node)
+      }
+    end
+
+
     private
-    
+
     def validate
       # A plan must be of a Hash type and it must have at least clouds and nodes
       # definitions.
