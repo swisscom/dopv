@@ -2,7 +2,7 @@ require 'dopv/core'
 
 module Dopv
   module Cloud
-    module Openstack
+    module OpenStack
       class Node < Dopv::Core::BaseNode
       end
     end

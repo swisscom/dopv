@@ -5,7 +5,7 @@
 #
 
 require 'dopv'
-require 'pry'
+#require 'pry'
 
-p=Dopv::Plan.load('/home/pdilung/dopv/samples/plans/modified-deployment-plan.yaml')
+p=Dopv::Plan.load('/home/pdilung/dopv/samples/plans/management-deployment-plan.yaml')
 p.execute

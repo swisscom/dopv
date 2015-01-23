@@ -5,12 +5,22 @@ require 'dopv/cloud/providers/vsphere'
 module Dopv
   module Cloud
     SUPPORTED_TYPES = {
-      :ovirt     => 'ovirt',
-      :rhev      => 'ovirt',
-      :openstack => 'openstack',
-      :vsphere   => 'vsphere',
-      :vmware    => 'vsphere'
+      :ovirt      => 'ovirt',
+      :rhev       => 'ovirt',
+      :openstack  => 'openstack',
+      :vsphere    => 'vsphere',
+      :vmware     => 'vsphere'
     }
+
+    TYPES_TO_CLASS_NAMES = {
+      :ovirt      => 'Ovirt',
+      :openstack  => 'OpenStack',
+      :vsphere    => 'Vsphere'
+    }
+    
+    module Errors
+      class ProviderError < StandardError; end
+    end
 
     def self.supported?(object)
       case object
