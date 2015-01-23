@@ -18,7 +18,9 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+	require 'dopv'
+	plan = Dopv::Plan.load('plan_file')
+	plan.execute
 
 ## Contributing
 
