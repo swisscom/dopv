@@ -45,7 +45,7 @@ module Dopv
             cloud_init[:gateway] = @config[:nets][0][:gateway]
           end
           begin
-            # Create new compute client instance
+            # Create new compute client instance.
             @compute_client = Fog::Compute.new(
               :provider           => @config[:provider],
               :ovirt_username     => @config[:provider_username],
@@ -53,7 +53,7 @@ module Dopv
               :ovirt_url          => @config[:provider_endpoint],
               :ovirt_ca_cert_file => get_ovirt_ca_cert
             )
-            # Create new virtual machine instance
+            # Create new virtual machine instance.
             vm = @compute_client.servers.create(
               :name     => @config[:nodename],
               :template => get_template_id,
@@ -61,6 +61,8 @@ module Dopv
               :memory   => FLAVOR[@config[:flavor].to_sym][:memory],
               :storage  => FLAVOR[@config[:flavor].to_sym][:storage]
             )
+            # Wait until all locks are released and start the node with cloud
+            # init.
             vm.wait_for { !locked? }
             vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
             vm.reload
