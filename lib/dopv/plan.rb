@@ -1,6 +1,5 @@
 require 'yaml'
 require 'ipaddr'
-require 'pry'
 
 module Dopv
   class PlanError < StandardError; end
@@ -58,7 +57,7 @@ module Dopv
 
     def execute
       @nodes.each { |node| 
-        Object.const_get("Dopv::Cloud::#{node[:provider].capitalize}::Node").bootstrap(node)
+        Object.const_get("Dopv::Cloud::#{Cloud::TYPES_TO_CLASS_NAMES[node[:provider].to_sym]}::Node").bootstrap(node)
       }
     end
 
