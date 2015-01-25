@@ -18,7 +18,7 @@ options = {}
 
 parser = OptionParser.new do |opts|
   opts.banner = 'Usage: dopv [options]'
-  opts.on('-p', '--plan FILE', String, 'A FILE that holds a plan') { |file| options[:plan] = file }
+  opts.on('-p', '--plan FILE', String, 'Specify a plan file to execute') { |file| options[:plan] = file }
   opts.on('-h', '--help', String, 'Display help') do
     puts opts
     exit
@@ -26,21 +26,25 @@ parser = OptionParser.new do |opts|
 end
 
 ARGV << "-h" if ARGV.empty?
+error_msg = error_code = nil
 begin
   parser.parse!
 
   plan = Dopv::Plan.load(options[:plan])
   plan.execute
 rescue OptionParser::ParseError => e
-  STDERR.puts e
-  exit ERROR[:parse_error]
+  error_msg   = e
+  error_code  = ERROR[:parse_error]
 rescue Dopv::Errors::PlanError => e
-  STDERR.puts e
-  exit ERROR[:plan_error]
+  error_msg   = e
+  error_code  = ERROR[:plan_error]
 rescue Dopv::Errors::ProviderError => e
-  STDERR.puts e
-  exit ERROR[:provider_error]
+  error_msg   = e
+  error_code  =  ERROR[:provider_error]
 rescue Exception => e
-  STDERR.puts e
-  exit ERROR[:unknown_error]
+  error_msg   = e
+  error_code  =  ERROR[:unknown_error]
 end
+
+STDERR.puts "ERROR: #{error_msg}" if error_msg
+exit error_code if error_code
