@@ -1,11 +1,11 @@
-require 'dopv/core'
+require 'dopv/base_node'
 require 'uri'
 require 'fog'
 
 module Dopv
   module Cloud
     module Ovirt
-      class Node < Dopv::Core::BaseNode
+      class Node < Dopv::BaseNode
         def initialize(config)
           @config = config
           cloud_init = { :hostname => @config[:nodename] }
