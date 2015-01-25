@@ -1,11 +1,10 @@
-require 'dopv/base_node'
 require 'uri'
 require 'fog'
 
 module Dopv
   module Cloud
     module Ovirt
-      class Node < Dopv::BaseNode
+      class Node < BaseNode
         def initialize(config)
           @config = config
           cloud_init = { :hostname => @config[:nodename] }
@@ -68,9 +67,8 @@ module Dopv
         def get_template_id
           id = nil
           @compute_client.list_templates.each { |t| id = t[:raw].id if t[:raw].name == @config[:image] }
-          id
+          raise Dopv::Errors::ProviderError, "No such template #{@config[:image]}" unless id
         end
-
       end
     end
   end

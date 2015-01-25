@@ -1,9 +1,7 @@
-require 'dopv/base_node'
-
 module Dopv
   module Cloud
     module OpenStack
-      class Node < Dopv::BaseNode
+      class Node < BaseNode
       end
     end
   end
