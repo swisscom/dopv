@@ -74,7 +74,6 @@ module Dopv
           unless File.exists?(local_ca_file)
             begin
               open(remote_ca_file) do |r|
-                puts r
                 f = File.open(local_ca_file, 'w')
                 f.write(r.read)
                 f.close
