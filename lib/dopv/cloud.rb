@@ -18,10 +18,6 @@ module Dopv
       :vsphere    => 'Vsphere'
     }
     
-    module Errors
-      class ProviderError < StandardError; end
-    end
-
     def self.supported?(object)
       case object
       when String

@@ -59,7 +59,7 @@ module Dopv
                 f.close
               end
             rescue
-              raise Cloud::Errors::ProviderError, "Cannot download CA certificate from #{uri.host}"
+              raise Dopv::Errors::ProviderError, "Cannot download CA certificate from #{uri.host}"
             end
           end
           local_ca_file
