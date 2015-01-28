@@ -51,15 +51,18 @@ module Dopv
               :ovirt_username     => @config[:provider_username],
               :ovirt_password     => @config[:provider_password],
               :ovirt_url          => @config[:provider_endpoint],
-              :ovirt_ca_cert_file => get_ovirt_ca_cert
+              :ovirt_datacenter   => get_ovirt_datacenter,
+              :ovirt_ca_cert_file => get_ovirt_ca_cert,
+              :ovirt_ca_no_verify => true
             )
             # Create new virtual machine instance.
             vm = @compute_client.servers.create(
               :name     => @config[:nodename],
-              :template => get_template_id,
+              :template => get_ovirt_template,
               :cores    => FLAVOR[@config[:flavor].to_sym][:cores],
               :memory   => FLAVOR[@config[:flavor].to_sym][:memory],
-              :storage  => FLAVOR[@config[:flavor].to_sym][:storage]
+              :storage  => FLAVOR[@config[:flavor].to_sym][:storage],
+              :cluster  => get_ovirt_cluster
             )
             # Wait until all locks are released and start the node with cloud
             # init.
@@ -80,7 +83,7 @@ module Dopv
           local_ca = remote_ca = nil
           unless File.exists?(local_ca_file)
             begin
-              remote_ca = open(remote_ca_file, 'r')
+              remote_ca = open(remote_ca_file, :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE)
               local_ca  = open(local_ca_file, 'w')
               local_ca.write(remote_ca.read)
             rescue
@@ -93,11 +96,36 @@ module Dopv
           local_ca_file
         end
 
-        def get_template_id
-          id = nil
-          @compute_client.list_templates.each { |t| id = t[:raw].id if t[:raw].name == @config[:image] }
-          raise Errors::ProviderError, "No such template #{@config[:image]}" unless id
-          id
+        def get_ovirt_datacenter
+          compute_client = Fog::Compute.new(
+            :provider           => @config[:provider],
+            :ovirt_username     => @config[:provider_username],
+            :ovirt_password     => @config[:provider_password],
+            :ovirt_url          => @config[:provider_endpoint],
+            :ovirt_ca_cert_file => get_ovirt_ca_cert,
+            :ovirt_ca_no_verify => true
+          )
+          begin
+            compute_client.datacenters.find { |dc| dc[:name] == @config[:datacenter] }[:id]
+          rescue
+            raise Errors::ProviderError, "No such datacenter '#{@config[:datacenter]}'"
+          end
+        end
+
+        def get_ovirt_cluster
+          begin
+            @compute_client.list_clusters.find { |cl| cl[:name] == @config[:cluster] }[:id]
+          rescue
+            raise Errors::ProviderError, "No such cluster '#{@config[:cluster]}'"
+          end
+        end
+
+        def get_ovirt_template
+          begin
+            @compute_client.list_templates.find { |tpl| tpl[:name] == @config[:image] }[:id]
+          rescue
+            raise Errors::ProviderError, "No such template '#{@config[:image]}'"
+          end
         end
       end
     end

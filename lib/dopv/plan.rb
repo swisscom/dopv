@@ -30,6 +30,8 @@ module Dopv
         node[:provider_endpoint] = @plan['clouds'][d['cloud']]['endpoint']
         # Node definitions
         node[:nodename] = n
+        node[:datacenter] = d['datacenter']
+        node[:cluster] = d['cluster']
         node[:image]    = d['image']
         node[:flavor]   = d['flavor']
         node[:disks]    = d['disks'] unless d['disks'].nil?
@@ -79,8 +81,9 @@ module Dopv
       # a certain type. A cloud definition pointed to by node's 'cloud' key must
       # exist in cloud section of the @plan.
       @plan['nodes'].each do |n, d|
-        if !(d.is_a?(Hash) && d['cloud'].is_a?(String) && d['flavor'].is_a?(String) &&
-             d['image'].is_a?(String) && d['nets'].is_a?(Array))
+        if !(d.is_a?(Hash) && d['cloud'].is_a?(String) &&
+             d['flavor'].is_a?(String) && d['datacenter'].is_a?(String) &&
+             d['cluster'].is_a?(String) && d['image'].is_a?(String) && d['nets'].is_a?(Array))
           raise Errors::PlanError, "Invalid definition of node #{n}"
         end
         raise Errors::PlanError, "Invalid cloud definition for node #{n}" unless @plan['clouds'].has_key?(d['cloud'])
