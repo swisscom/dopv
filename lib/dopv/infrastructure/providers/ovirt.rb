@@ -3,7 +3,7 @@ require 'uri'
 require 'open-uri'
 
 module Dopv
-  module Cloud
+  module Infrastructure
     module Ovirt
       # Based on http://docs.openstack.org/openstack-ops/content/flavors.html
       FLAVOR = {

@@ -1,5 +1,5 @@
 module Dopv
-  module Cloud
+  module Infrastructure
     class BaseNode
       def self.bootstrap(node_definition)
         new(node_definition)

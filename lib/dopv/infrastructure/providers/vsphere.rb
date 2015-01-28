@@ -1,6 +1,6 @@
 module Dopv
-  module Cloud
-    module OpenStack
+  module Infrastructure
+    module Vsphere
       class Node < BaseNode
       end
     end

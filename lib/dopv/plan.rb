@@ -1,5 +1,6 @@
 require 'yaml'
 require 'ipaddr'
+require 'pry'
 
 module Dopv
   class Plan
@@ -20,42 +21,37 @@ module Dopv
       # Validate plan
       validate
       # Generate node definition according to plan
-      clouds = @plan['clouds']
+      infrastructures = @plan['infrastructures']
       @plan['nodes'].each do |n, d|
         node = {}
-        # Cloud provider definitions
-        node[:provider] = Cloud::SUPPORTED_TYPES[@plan['clouds'][d['cloud']]['type'].to_sym]
-        node[:provider_username] = @plan['clouds'][d['cloud']]['credentials']['username']
-        node[:provider_password] = @plan['clouds'][d['cloud']]['credentials']['password']
-        node[:provider_endpoint] = @plan['clouds'][d['cloud']]['endpoint']
+        # Infrastructure provider definitions
+        node[:provider] = Infrastructure::SUPPORTED_TYPES[infrastructures[d['infrastructure']]['type'].to_sym]
+        node[:provider_username] = infrastructures[d['infrastructure']]['credentials']['username']
+        node[:provider_password] = infrastructures[d['infrastructure']]['credentials']['password']
+        node[:provider_endpoint] = infrastructures[d['infrastructure']]['endpoint']
         # Node definitions
         node[:nodename] = n
-        node[:datacenter] = d['datacenter']
-        node[:cluster] = d['cluster']
         node[:image]    = d['image']
         node[:flavor]   = d['flavor']
-        node[:disks]    = d['disks'] unless d['disks'].nil?
-        # OS/Cloudinit definitions
-        node[:nets] = []
-        d['nets'].each do |net|
-          nic = {}
-          nic[:int]   = net['int']
-          nic[:proto] = net['proto']
-          if net['proto'] == 'static'
-            nic[:ip] = net['ip']
-            nic[:netmask] = net['netmask']
-            nic[:gateway] = net['gateway']
-          end
-          node[:nets] << nic
+        d['disks'].each { |dsk| (node[:disks] ||= []) << Hash[dsk.map { |k, v| [k.to_sym, v] }] } if d['disks']
+        d['infrastructure_properties'].each { |k, v| node[k.to_sym] = v } if d['infrastructure_properties']
+        d['interfaces'].each do |k, v|
+          interface = {}
+          interface[:name] = k
+          interface[:network] = v['network']
+          interface[:ip_address] = v['ip']
+          interface[:ip_netmask] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_netmask']
+          interface[:ip_gateway] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
+          (node[:interfaces] ||= []) << interface
         end
-        # DNS
         node[:dns] = Hash[d['dns'].map { |k, v| [k.to_sym, v] }] unless d['dns'].nil?
         @nodes << node
+        puts @nodes
       end
     end
 
     def execute
-      @nodes.each { |node| Cloud::bootstrap(node) }
+      @nodes.each { |node| Infrastructure::bootstrap(node) }
     end
 
     private
@@ -64,54 +60,98 @@ module Dopv
       # A plan must be of a Hash type and it must have at least clouds and nodes
       # definitions.
       raise Errors::PlanError, 'Plan must be of hash type' unless @plan.is_a?(Hash)
-      if !@plan.has_key?('clouds') || !@plan.has_key?('nodes')
-        raise Errors::PlanError, "Plan must define 'clouds' and 'nodes' hashes"
+      if !@plan.has_key?('infrastructures') || !@plan.has_key?('nodes')
+        raise Errors::PlanError, "Plan must define 'infrastructure' and 'nodes' hashes"
       end
-      # Cloud and node definitions must be groupped into hashes.
-      if !@plan['clouds'].is_a?(Hash) || !@plan['nodes'].is_a?(Hash)
-        raise Errors::PlanError, 'Nodes and clouds must be of hash type'
+      # Infrastructure and node definitions must be groupped into hashes.
+      if !@plan['infrastructures'].is_a?(Hash) || !@plan['nodes'].is_a?(Hash)
+        raise Errors::PlanError, 'Infrastructures and nodes must be of hash type'
       end
-      @plan['clouds'].each do |n, c|
-        raise Errors::PlanError, "Cloud #{n} is of unsupported type" unless Cloud.supported?(c)
+      @plan['infrastructures'].each do |i, d|
+        raise Errors::PlanError, "Infrastructure '#{i}' is of unsupported type" unless Infrastructure.supported?(d)
+        d['networks'].each_value do |v|
+          if !v.is_a?(Hash) || !v['ip_pool'].is_a?(Hash) ||
+             !v['ip_netmask'].is_a?(String) || !v['ip_defgw'].is_a?(String) ||
+             !v['ip_pool']['from'].is_a?(String) || !v['ip_pool']['to'].is_a?(String)
+            raise Errors::PlanError, "Infrastructure '#{i}' has an invalid network definition"
+          end
+          begin
+            IPAddr.new(v['ip_netmask'])
+            ip_from   = IPAddr.new(v['ip_pool']['from'])
+            ip_to     = IPAddr.new(v['ip_pool']['to'])
+            ip_defgw  = IPAddr.new(v['ip_defgw'])
+            if ip_from > ip_to || !(ip_defgw < ip_from || ip_defgw > ip_to)
+              raise Errors::PlanError, "Infrastructure '#{i}' has an invalid network definition"
+            end
+          rescue
+            raise Errors::PlanError, "Infrastructure '#{i}' has an invalid network definition"
+          end
+        end
       end
-      # A node definition in a plan must be defined in nodes hash of the plan
-      # and it may be referenced by its name.
+      # A node definition must be defined in nodes hash and it is be referenced
+      # by its name.
       # The node definition itself must be of a Hash type and it must contain
-      # at least definitions of cloud, image, nets and flavor. These must be of
-      # a certain type. A cloud definition pointed to by node's 'cloud' key must
-      # exist in cloud section of the @plan.
+      # at least definitions of the infrastructure, image, network and flavor.
+      # Again, these must be of a certain type.
+      # An infrastructure definition pointed to by node's 'infrastructure' key
+      # must exist in infrastructures section of the @plan.
       @plan['nodes'].each do |n, d|
-        if !(d.is_a?(Hash) && d['cloud'].is_a?(String) &&
-             d['flavor'].is_a?(String) && d['datacenter'].is_a?(String) &&
-             d['cluster'].is_a?(String) && d['image'].is_a?(String) && d['nets'].is_a?(Array))
+        if !(d.is_a?(Hash) && d['infrastructure'].is_a?(String) && d['flavor'].is_a?(String) &&
+             d['image'].is_a?(String) && d['interfaces'].is_a?(Hash))
           raise Errors::PlanError, "Invalid definition of node #{n}"
         end
-        raise Errors::PlanError, "Invalid cloud definition for node #{n}" unless @plan['clouds'].has_key?(d['cloud'])
+        raise Errors::PlanError, "Node '#{n}' points to invalid infrastructure" unless @plan['infrastructures'].has_key?(d['infrastructure'])
+        if d.has_key?('infrastructure_properties')
+          if !d['infrastructure_properties'].is_a?(Hash)
+            raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition"
+          end
+          d['infrastructure_properties'].each do |p, v|
+            case p
+            when 'datacenter'
+              raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition" unless v.is_a?(String)
+            when 'cluster'
+              raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition" unless v.is_a?(String)
+            when 'affinity_group'
+              raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition" unless v.is_a?(String)
+            when 'keep_ha'
+              if v != true && v != false
+                raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition"
+              end
+            else
+              raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition"
+            end
+          end
+        end
 
         # Networks
-        d['nets'].each do |net|
-          if !net.is_a?(Hash) || !net['int'].is_a?(String) || !net['proto'].is_a?(String)
-            raise Errors::PlanError, "Invalid network definition for node #{n}"
+        d['interfaces'].each do |i, v|
+          if !v.is_a?(Hash) || !v['network'].is_a?(String) || !v['ip'].is_a?(String)
+            raise Errors::PlanError, "Node '#{n}' has invalid interface definition"
           end
-          if net['proto'] != 'static' && net['proto'] != 'dhcp'
-            raise Errors::PlanError, "Invalid network protocol definition for node #{n}"
+          unless @plan['infrastructures'][d['infrastructure']]['networks'].has_key?(v['network'])
+            raise Errors::PlanError, "Node '#{n}' network points to invalid network definition"
           end
-          if net['proto'] == 'static'
+          if v['ip'] != 'dhcp'
             begin
-              IPAddr.new(net['ip'])
-              IPAddr.new(net['netmask'])
-              IPAddr.new(net['gateway'])
+              ip = IPAddr.new(v['ip'])
+              ip_from   = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['from'])
+              ip_to     = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['to'])
+              ip_defgw  = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_defgw'])
+              if ip < ip_from || ip > ip_to || ip == ip_defgw
+                raise Errors::PlanError, "Node '#{n}' has an invalid IP definition"
+              end
             rescue
-              raise Errors::PlanError, "Either of ip, netmask, gateway is invalid or indefined for node #{n}"
+              raise Errors::PlanError, "Node '#{n}' has an invalid IP definition"
             end
           end
         end
 
         # Disks
         if d.has_key?('disks')
-          raise Errors::PlanError, "Invalid disk definition of node #{n}" unless d['disks'].is_a?(Hash)
-          d['disks'].each do |dsk,size|
-            if !dsk.is_a?(String) || size !~ /[1-9]*[MGTmgt]/
+          raise Errors::PlanError, "Invalid disk definition of node #{n}" unless d['disks'].is_a?(Array)
+          d['disks'].each do |dsk|
+            if !dsk.is_a?(Hash) || !dsk['name'].is_a?(String) ||
+               !dsk['pool'].is_a?(String) || !dsk['size'].is_a?(String) || dsk['size'] !~ /[1-9]*[MGTmgt]/
               raise Errors::PlanError, "Invalid disk name and/or size definition of node #{n}"
             end
           end

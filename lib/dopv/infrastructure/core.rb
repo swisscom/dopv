@@ -1,5 +1,5 @@
 module Dopv
-  module Cloud
+  module Infrastructure
     SUPPORTED_TYPES = {
       :ovirt      => 'ovirt',
       :rhev       => 'ovirt',
@@ -28,7 +28,7 @@ module Dopv
     end
 
     def self.bootstrap(node)
-      Object.const_get("Dopv::Cloud::#{TYPES_TO_CLASS_NAMES[node[:provider].to_sym]}::Node").bootstrap(node)
+      Object.const_get("Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node[:provider].to_sym]}::Node").bootstrap(node)
     end
   end
 end

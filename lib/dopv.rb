@@ -1,4 +1,4 @@
 require 'dopv/version'
 require 'dopv/error'
 require 'dopv/plan'
-require 'dopv/cloud'
+require 'dopv/infrastructure'
