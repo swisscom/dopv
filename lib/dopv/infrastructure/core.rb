@@ -27,8 +27,8 @@ module Dopv
       end
     end
 
-    def self.bootstrap(node)
-      Object.const_get("Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node[:provider].to_sym]}::Node").bootstrap(node)
+    def self.bootstrap(node_config)
+      Object.const_get("Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node_config[:provider].to_sym]}::Node").bootstrap(node_config)
     end
   end
 end
