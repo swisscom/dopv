@@ -54,6 +54,8 @@ module Dopv
               :endpoint     => node_config[:provider_endpoint],
               :datacenter   => node_config[:datacenter]
             )
+
+            # Create a VM
             vm = @compute_client.servers.create(
               :name     => node_config[:nodename],
               :template => get_template_id(node_config[:image]),
@@ -62,12 +64,35 @@ module Dopv
               :storage  => FLAVOR[node_config[:flavor].to_sym][:storage],
               :cluster  => get_cluster_id(node_config[:cluster])
             )
-            # Wait until all locks are released and start the node with cloud
-            # init.
+
+            # Wait until all locks are released
             vm.wait_for { !locked? }
+            
+            # Remove all interfaces defined by the template
+            vm.interfaces.each { |interface| vm.destroy_interface(:id => interface.id) }
+            # Create all interfaces defined in node configuration
+            node_config[:interfaces].each do |interface|
+              begin
+                network = @compute_client.list_networks(vm.cluster).find { |n| n.name == interface[:network] }
+              rescue
+                raise Errors::ProviderError, "Cannot create interface, no such network '#{interface[:network]}'"
+              end
+                vm.add_interface(
+                  :network  => network.id,
+                  :name     => interface[:name],
+                  :plugged  => true,
+                  :linked   => true,
+                )
+                vm = vm.save
+            end
+            
+            # Start a node with cloudinit
             vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
+
+            # Reload the node
             vm.reload
           rescue Exception => e 
+            vm.destroy
             raise Errors::ProviderError, "Error while creating '#{node_config[:nodename]}': #{e}"
           end
         end
