@@ -37,6 +37,7 @@ module Dopv
       class Node < BaseNode
         def initialize(node_config)
           @compute_client = nil
+          vm = nil
 
           cloud_init = { :hostname => node_config[:nodename] }
           if node_config[:interfaces][0][:ip_address] != 'dhcp'
@@ -92,7 +93,7 @@ module Dopv
             # Reload the node
             vm.reload
           rescue Exception => e 
-            vm.destroy
+            vm.destroy if vm
             raise Errors::ProviderError, "Error while creating '#{node_config[:nodename]}': #{e}"
           end
         end
