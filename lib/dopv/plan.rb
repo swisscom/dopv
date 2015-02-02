@@ -1,6 +1,5 @@
 require 'yaml'
 require 'ipaddr'
-require 'pry'
 
 module Dopv
   class Plan
