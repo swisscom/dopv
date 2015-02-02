@@ -45,7 +45,6 @@ module Dopv
         end
         node[:dns] = Hash[d['dns'].map { |k, v| [k.to_sym, v] }] unless d['dns'].nil?
         @nodes << node
-        puts @nodes
       end
     end
 
