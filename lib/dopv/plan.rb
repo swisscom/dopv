@@ -115,6 +115,8 @@ module Dopv
               if v != true && v != false
                 raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition"
               end
+            when 'affinity_groups'
+              raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition" unless v.is_a?(Array)
             else
               raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition"
             end
