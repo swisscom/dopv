@@ -1,7 +1,6 @@
 require 'fog'
 require 'uri'
 require 'open-uri'
-require 'pry-debugger'
 
 module Dopv
   module Infrastructure
@@ -69,18 +68,23 @@ module Dopv
 
             # Wait until all locks are released
             vm.wait_for { !locked? }
-            binding.pry
-
-            add_interfaces(vm, node_config[:interfaces])
             
+            # Add interfaces
+            vm = add_interfaces(vm, node_config[:interfaces])
+
+            # Add disks
+            vm = add_disks(vm, node_config[:disks])
             
             # Start a node with cloudinit
             vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
 
             # Reload the node
             vm.reload
-          rescue Exception => e 
-            vm.destroy if vm
+          rescue Exception => e
+            if vm
+              vm.wait_for { !locked? }
+              vm.destroy
+            end
             raise Errors::ProviderError, "Error while creating '#{node_config[:nodename]}': #{e}"
           end
         end
@@ -149,6 +153,14 @@ module Dopv
             raise Errors::ProviderError, "No such template '#{template_name}'"
           end
         end
+        
+        def get_storage_domain_id(storage_domain_name)
+          begin
+            @compute_client.storage_domains.find { |sd| sd.name == storage_domain_name}.id
+          rescue
+            raise Errors::ProviderError, "No such storage domain '#{storage_domain_name}'"
+          end
+        end
 
         def add_interfaces(vm, interfaces)
           # Remove all interfaces defined by the template
@@ -166,8 +178,31 @@ module Dopv
               :plugged  => true,
               :linked   => true,
             )
+            vm.wait_for { !locked? }
             vm = vm.save
           end
+          vm
+        end
+
+        def add_disks(vm, disks_config)
+          disks_config.each do |disk_config|
+            size = case disk_config[:size]
+                   when /[1-9]*[Mm]/
+                     (disk_config[:size].split(/[Mm]/)[0].to_f*1024*1024).to_i
+                   when /[1-9]*[Gg]/
+                     (disk_config[:size].split(/[Gg]/)[0].to_f*1024*1024*1024).to_i
+                   when /[1-9]*[Tt]/
+                     (disk_config[:size].split(/[Tt]/)[0].to_f*1024*1024*1024*1024).to_i
+                   end
+            vm.add_volume(
+              :storage_domain => get_storage_domain_id(disk_config[:pool]),
+              :size           => size,
+              :bootable       => 'false'
+            )
+            vm.wait_for { !locked? }
+            vm = vm.save
+          end
+          vm
         end
       end
     end
