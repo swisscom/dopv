@@ -1,6 +1,7 @@
 require 'fog'
 require 'uri'
 require 'open-uri'
+require 'pry-debugger'
 
 module Dopv
   module Infrastructure
@@ -68,24 +69,10 @@ module Dopv
 
             # Wait until all locks are released
             vm.wait_for { !locked? }
+            binding.pry
+
+            add_interfaces(vm, node_config[:interfaces])
             
-            # Remove all interfaces defined by the template
-            vm.interfaces.each { |interface| vm.destroy_interface(:id => interface.id) }
-            # Create all interfaces defined in node configuration
-            node_config[:interfaces].each do |interface|
-              begin
-                network = @compute_client.list_networks(vm.cluster).find { |n| n.name == interface[:network] }
-              rescue
-                raise Errors::ProviderError, "Cannot create interface, no such network '#{interface[:network]}'"
-              end
-                vm.add_interface(
-                  :network  => network.id,
-                  :name     => interface[:name],
-                  :plugged  => true,
-                  :linked   => true,
-                )
-                vm = vm.save
-            end
             
             # Start a node with cloudinit
             vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
@@ -160,6 +147,26 @@ module Dopv
             @compute_client.list_templates.find { |tpl| tpl[:name] == template_name }[:id]
           rescue
             raise Errors::ProviderError, "No such template '#{template_name}'"
+          end
+        end
+
+        def add_interfaces(vm, interfaces)
+          # Remove all interfaces defined by the template
+          vm.interfaces.each { |interface| vm.destroy_interface(:id => interface.id) }
+          # Create all interfaces defined in node configuration
+          interfaces.each do |interface|
+            begin
+              network = @compute_client.list_networks(vm.cluster).find { |n| n.name == interface[:network] }
+            rescue
+              raise Errors::ProviderError, "Cannot create interface, no such network '#{interface[:network]}'"
+            end
+            vm.add_interface(
+              :network  => network.id,
+              :name     => interface[:name],
+              :plugged  => true,
+              :linked   => true,
+            )
+            vm = vm.save
           end
         end
       end
