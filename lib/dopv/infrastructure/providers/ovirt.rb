@@ -1,6 +1,7 @@
 require 'fog'
 require 'uri'
 require 'open-uri'
+require 'pry-debugger'
 
 module Dopv
   module Infrastructure
@@ -35,7 +36,7 @@ module Dopv
       }
 
       class Node < BaseNode
-        def initialize(node_config)
+        def initialize(node_config, disk_db)
           @compute_client = nil
           vm = nil
 
@@ -73,7 +74,7 @@ module Dopv
             vm = add_interfaces(vm, node_config[:interfaces])
 
             # Add disks
-            vm = add_disks(vm, node_config[:disks])
+            vm = add_disks(vm, node_config[:disks], disk_db)
             
             # Start a node with cloudinit
             vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
@@ -83,6 +84,8 @@ module Dopv
           rescue Exception => e
             if vm
               vm.wait_for { !locked? }
+              disks = disk_db.find_all {|disk| disk.node == vm.name}
+              disks.each {|disk| vm.detach_volume(:id => disk.id)} rescue nil
               vm.destroy
             end
             raise Errors::ProviderError, "Error while creating '#{node_config[:nodename]}': #{e}"
@@ -162,6 +165,14 @@ module Dopv
           end
         end
 
+        def get_volume_obj(volume_id)
+          begin
+            @compute_client.volumes.find { |vol| vol.id == volume_id }
+          rescue
+            raise Errors::ProviderError, "No such volume with id '#{volume_id}'"
+          end
+        end
+        
         def add_interfaces(vm, interfaces)
           # Remove all interfaces defined by the template
           vm.interfaces.each { |interface| vm.destroy_interface(:id => interface.id) }
@@ -184,23 +195,70 @@ module Dopv
           vm
         end
 
-        def add_disks(vm, disks_config)
-          disks_config.each do |disk_config|
-            size = case disk_config[:size]
-                   when /[1-9]*[Mm]/
-                     (disk_config[:size].split(/[Mm]/)[0].to_f*1024*1024).to_i
-                   when /[1-9]*[Gg]/
-                     (disk_config[:size].split(/[Gg]/)[0].to_f*1024*1024*1024).to_i
-                   when /[1-9]*[Tt]/
-                     (disk_config[:size].split(/[Tt]/)[0].to_f*1024*1024*1024*1024).to_i
-                   end
-            vm.add_volume(
-              :storage_domain => get_storage_domain_id(disk_config[:pool]),
-              :size           => size,
-              :bootable       => 'false'
-            )
+        def add_disks(vm, config_disks, disk_db)
+          persistent_disks = disk_db.find_all {|pd| pd.node == vm.name}
+          
+          # Check if persistent disks DB is consistent
+          persistent_disks.each do |pd|
+            # Disk exists in state DB but not in plan
+            unless config_disks.find {|cd| pd.name == cd[:name]}
+              err_msg = "Inconsistent disk DB: disk '#{pd.name}' exists in DB but not in plan"
+              raise Errors::ProviderError, err_msg
+            end
+            # Disk exists in state DB but not on the server side
+            unless @compute_client.volumes.find{|vol| pd.id == vol.id}
+              err_msg = "Inconsistent disk DB: disk '#{pd.name}' does not exist on the server side"
+              raise Errors::ProviderError, err_msg
+            end
+          end
+          config_disks.each do |cd|
+            # Disk exists in a plan but it is not recorded in the state DB for a
+            # given node
+            if !persistent_disks.empty? && !persistent_disks.find {|pd| cd[:name] == pd.name}
+              err_msg = "Inconsistent disk DB: disk '#{cd[:name]}' exists in plan but not in DB"
+              raise Errors::ProviderError, err_msg
+            end
+          end
+
+          # Attach all persistent disks
+          persistent_disks.each do |pd|
+            vm.attach_volume(:id => pd.id)
             vm.wait_for { !locked? }
             vm = vm.save
+          end
+
+          # Create those disks that do not exist in peristent disks DB and
+          # record them into DB
+          config_disks.each do |cd|
+            unless vm.volumes.find {|vol| vol.alias == cd[:name]}
+              size = case cd[:size]
+                     when /[1-9]*[Mm]/
+                       (cd[:size].split(/[Mm]/)[0].to_f*1024*1024).to_i
+                     when /[1-9]*[Gg]/
+                       (cd[:size].split(/[Gg]/)[0].to_f*1024*1024*1024).to_i
+                     when /[1-9]*[Tt]/
+                       (cd[:size].split(/[Tt]/)[0].to_f*1024*1024*1024*1024).to_i
+                     end
+              storage_domain = get_storage_domain_id(cd[:pool])
+              vm.add_volume(
+                :storage_domain => storage_domain,
+                :size           => size,
+                :bootable       => 'false',
+                :alias          => cd[:name]
+              )
+              # Wait until all locks are released and re-save the VM state 
+              vm.wait_for { !locked? }
+              vm = vm.save
+              # Record volume to a persistent disks database
+              disk = vm.volumes.find {|vol| vol.alias == cd[:name]}
+              disk_db << {
+                :node => vm.name,
+                :name => disk.alias,
+                :id   => disk.id,
+                :pool => disk.storage_domain,
+                :size => disk.size
+              }
+            end
           end
           vm
         end

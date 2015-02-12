@@ -6,6 +6,7 @@
 
 require 'optparse'
 require 'dopv'
+require 'pry-debugger'
 
 ERROR = {
   :parse_error    => 1,
@@ -19,6 +20,7 @@ options = {}
 parser = OptionParser.new do |opts|
   opts.banner = 'Usage: dopv [options]'
   opts.on('-p', '--plan FILE', String, 'Specify a plan file to execute') { |file| options[:plan] = file }
+  opts.on('-d', '--disk-db FILE', String, 'Specify disk state file') { |file| options[:disk_db] = file }
   opts.on('-h', '--help', String, 'Display help') do
     puts opts
     exit
@@ -27,24 +29,24 @@ end
 
 ARGV << "-h" if ARGV.empty?
 error_msg = error_code = nil
-begin
+#begin
   parser.parse!
 
-  plan = Dopv::Plan.load(options[:plan])
+  plan = Dopv::Plan.load(options[:plan], options[:disk_db])
   plan.execute
-rescue OptionParser::ParseError => e
-  error_msg   = e
-  error_code  = ERROR[:parse_error]
-rescue Dopv::Errors::PlanError => e
-  error_msg   = e
-  error_code  = ERROR[:plan_error]
-rescue Dopv::Errors::ProviderError => e
-  error_msg   = e
-  error_code  =  ERROR[:provider_error]
-rescue Exception => e
-  error_msg   = e
-  error_code  =  ERROR[:unknown_error]
-end
+#rescue OptionParser::ParseError => e
+#  error_msg   = e
+#  error_code  = ERROR[:parse_error]
+#rescue Dopv::Errors::PlanError => e
+#  error_msg   = e
+#  error_code  = ERROR[:plan_error]
+#rescue Dopv::Errors::ProviderError => e
+#  error_msg   = e
+#  error_code  =  ERROR[:provider_error]
+#rescue Exception => e
+#  error_msg   = e
+#  error_code  =  ERROR[:unknown_error]
+#end
 
 STDERR.puts "ERROR: #{error_msg}" if error_msg
 exit error_code if error_code

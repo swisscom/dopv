@@ -3,22 +3,25 @@ require 'ipaddr'
 
 module Dopv
   class Plan
-    def self.load(plan)
+    def self.load(plan, disk_db_file)
       case plan
       when String
-        new(YAML.load_file(plan))
+        new(YAML.load_file(plan), disk_db_file)
       when Hash
-        new(plan)
+        new(plan, disk_db_file)
       else
         raise Errors::PlanError, "Plan argument must be of String or Hash type"
       end
     end
 
-    def initialize(plan)
+    def initialize(plan, disk_db_file)
       @nodes = []
       @plan = plan
+      @disk_db = PersistentDisk::load(disk_db_file)
+      
       # Validate plan
       validate
+      
       # Generate node definition according to plan
       infrastructures = @plan['infrastructures']
       @plan['nodes'].each do |n, d|
@@ -49,7 +52,8 @@ module Dopv
     end
 
     def execute
-      @nodes.each { |node| Infrastructure::bootstrap(node) }
+      @nodes.each { |node| Infrastructure::bootstrap(node, @disk_db) }
+      @disk_db.save
     end
 
     private
