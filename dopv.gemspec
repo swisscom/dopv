@@ -25,6 +25,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "pry-debugger"
 
   spec.add_dependency "json"
-  spec.add_dependency "rbovirt", ">= 0.0.32"
+  spec.add_dependency "rbovirt", ">= 0.0.34"
   spec.add_dependency "fog", ">= 1.27.0"
 end
