@@ -17,7 +17,7 @@ module Dopv
           @name = attrs[:name]
           @id   = attrs[:id]
           @pool = attrs[:pool]
-          @size = attrs[:size]
+          @size = attrs[:size].to_i
         else
           raise Errors::PersistentDiskError, "Invalid disk entry"
         end
@@ -26,9 +26,9 @@ module Dopv
       def ==(other)
         case other
         when Entry
-          @node == other.node && name == other.name && id == other.id
+          @node == other.node && @name == other.name && @id == other.id && @pool == other.pool
         when Hash
-          @node == other[:node] && @name == other[:name] && @id == other[:id]
+          @node == other[:node] && @name == other[:name] && @id == other[:id] && @pool == other.pool
         else
           false
         end
@@ -40,7 +40,7 @@ module Dopv
         @name = attrs[:name] if attrs[:name]
         @id   = attrs[:id]   if attrs[:id]
         @pool = attrs[:pool] if attrs[:pool]
-        @size = attrs[:size] if attrs[:size]
+        @size = attrs[:size].to_i if attrs[:size]
         self
       end
       
