@@ -56,6 +56,22 @@ module Dopv
               :endpoint     => node_config[:provider_endpoint],
               :datacenter   => node_config[:datacenter]
             )
+            
+            # Until merged to upstream
+            # https://github.com/abenari/rbovirt/pull/66
+            require 'ext/rbovirt/ovirt/volume'
+            # Until merged to upstream
+            # https://github.com/abenari/rbovirt/issues/67
+            require 'ext/rbovirt/ovirt/affinity_group'
+            require 'ext/rbovirt/client/affinity_group_api'
+            # https://github.com/abenari/rbovirt/issues/67
+            require 'ext/fog/ovirt/compute'
+            require 'ext/fog/ovirt/models/compute/server'
+            require 'ext/fog/ovirt/models/compute/volumes'
+            require 'ext/fog/ovirt/models/compute/volume'
+            require 'ext/fog/ovirt/requests/compute/attach_volume'
+            require 'ext/fog/ovirt/requests/compute/detach_volume'
+            require 'ext/fog/ovirt/requests/compute/list_volumes'
 
             # Create a VM
             vm = @compute_client.servers.create(
@@ -196,24 +212,9 @@ module Dopv
         end
 
         def assign_affinity_groups(affinity_groups)
-          # Until merged to upstream
-          # https://github.com/abenari/rbovirt/issues/67
-          require 'ext/rbovirt/ovirt/affinity_group'
-          require 'ext/rbovirt/client/affinity_group_api'
         end
 
         def add_disks(vm, config_disks, disk_db)
-          # Until merged to upstream
-          # https://github.com/abenari/rbovirt/pull/66
-          require 'ext/rbovirt/ovirt/volume'
-          # https://github.com/abenari/rbovirt/issues/67
-          require 'ext/fog/ovirt/compute'
-          require 'ext/fog/ovirt/models/compute/server'
-          require 'ext/fog/ovirt/models/compute/volumes'
-          require 'ext/fog/ovirt/models/compute/volume'
-          require 'ext/fog/ovirt/requests/compute/attach_volume'
-          require 'ext/fog/ovirt/requests/compute/detach_volume'
-          require 'ext/fog/ovirt/requests/compute/list_volumes'
 
           persistent_disks = disk_db.find_all {|pd| pd.node == vm.name}
           
