@@ -210,6 +210,12 @@ module Dopv
               err_msg = "Inconsistent disk DB: disk '#{pd.name}' does not exist on the server side"
               raise Errors::ProviderError, err_msg
             end
+            # Disk exists in state DB as well as on server side, however storage
+            # pools do not match,
+            unless @compute_client.volumes.find{|vol| pd.id == vol.id && pd.pool == vol.storage_domain}
+              err_msg = "Inconsistent disk DB: disk '#{pd.name}' is in a different storage pool on the server side"
+              raise Errors::ProviderError, err_msg
+            end
           end
           config_disks.each do |cd|
             # Disk exists in a plan but it is not recorded in the state DB for a
