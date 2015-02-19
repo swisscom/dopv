@@ -35,7 +35,10 @@ module Dopv
         node[:nodename] = n
         node[:image]    = d['image']
         node[:flavor]   = d['flavor']
-        d['disks'].each { |dsk| (node[:disks] ||= []) << Hash[dsk.map { |k, v| [k.to_sym, v] }] } if d['disks']
+        # Create an empty disks array
+        node[:disks] = []
+        # Add disks if any
+        d['disks'].each { |dsk| node[:disks] << Hash[dsk.map { |k, v| [k.to_sym, v] }] } if d['disks']
         d['infrastructure_properties'].each { |k, v| node[k.to_sym] = v } if d['infrastructure_properties']
         d['interfaces'].each do |k, v|
           interface = {}
