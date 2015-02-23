@@ -1,7 +1,6 @@
 require 'fog'
 require 'uri'
 require 'open-uri'
-require 'pry-debugger'
 
 module Dopv
   module Infrastructure
@@ -60,18 +59,11 @@ module Dopv
             # Until merged to upstream
             # https://github.com/abenari/rbovirt/pull/66
             require 'ext/rbovirt/ovirt/volume'
-            # Until merged to upstream
-            # https://github.com/abenari/rbovirt/issues/67
+            # https://github.com/abenari/rbovirt/pull/69
             require 'ext/rbovirt/ovirt/affinity_group'
             require 'ext/rbovirt/client/affinity_group_api'
-            # https://github.com/abenari/rbovirt/issues/67
-            require 'ext/fog/ovirt/compute'
-            require 'ext/fog/ovirt/models/compute/server'
-            require 'ext/fog/ovirt/models/compute/volumes'
+            # https://github.com/fog/fog/pull/3454
             require 'ext/fog/ovirt/models/compute/volume'
-            require 'ext/fog/ovirt/requests/compute/attach_volume'
-            require 'ext/fog/ovirt/requests/compute/detach_volume'
-            require 'ext/fog/ovirt/requests/compute/list_volumes'
 
             # Create a VM
             vm = @compute_client.servers.create(
