@@ -55,16 +55,11 @@ module Dopv
               :endpoint     => node_config[:provider_endpoint],
               :datacenter   => node_config[:datacenter]
             )
-            
+
             # Until merged to upstream
-            # https://github.com/abenari/rbovirt/pull/66
-            require 'ext/rbovirt/ovirt/volume'
-            # https://github.com/abenari/rbovirt/pull/69
-            require 'ext/rbovirt/ovirt/affinity_group'
-            require 'ext/rbovirt/client/affinity_group_api'
             # https://github.com/fog/fog/pull/3454
             require 'ext/fog/ovirt/models/compute/volume'
-
+            
             # Create a VM
             vm = @compute_client.servers.create(
               :name     => node_config[:nodename],
