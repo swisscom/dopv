@@ -120,9 +120,12 @@ module Dopv
 
       def load_file
         db = []
-        return db unless File.exist?(@db_file)
-        YAML.load_file(@db_file).each do |k, v|
-          v.each {|entry| db << Entry.new(Hash[entry.map {|k1, v1| [k1.to_sym, v1]}].merge(:node => k))}
+        begin
+          YAML.load_file(@db_file).each do |k, v|
+            v.each {|entry| db << Entry.new(Hash[entry.map {|k1, v1| [k1.to_sym, v1]}].merge(:node => k))}
+          end
+        rescue
+          []
         end
         db
       end
