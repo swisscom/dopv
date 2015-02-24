@@ -56,10 +56,6 @@ module Dopv
               :datacenter   => node_config[:datacenter]
             )
 
-            # Until merged to upstream
-            # https://github.com/fog/fog/pull/3454
-            require 'ext/fog/ovirt/models/compute/volume'
-            
             # Create a VM
             vm = @compute_client.servers.create(
               :name     => node_config[:nodename],
