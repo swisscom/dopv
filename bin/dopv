@@ -20,6 +20,7 @@ parser = OptionParser.new do |opts|
   opts.banner = 'Usage: dopv [options]'
   opts.on('-p', '--plan FILE', String, 'Specify a plan file to execute') { |file| options[:plan] = file }
   opts.on('-d', '--disk-db FILE', String, 'Specify disk state file') { |file| options[:disk_db] = file }
+  opts.on('-t', '--trace', 'Show back traces on errors') { |trace| options[:trace] = true }
   opts.on('-h', '--help', String, 'Display help') do
     puts opts
     exit
@@ -27,7 +28,7 @@ parser = OptionParser.new do |opts|
 end
 
 ARGV << "-h" if ARGV.empty?
-error_msg = error_code = nil
+error_msg = error_bt = error_code = nil
 begin
  parser.parse!
 
@@ -35,17 +36,22 @@ begin
  plan.execute
 rescue OptionParser::ParseError => e
   error_msg   = e
+  error_bt    = e.backtrace.join("\n")
   error_code  = ERROR[:parse_error]
 rescue Dopv::Errors::PlanError => e
   error_msg   = e
+  error_bt    = e.backtrace.join("\n")
   error_code  = ERROR[:plan_error]
 rescue Dopv::Errors::ProviderError => e
   error_msg   = e
+  error_bt    = e.backtrace.join("\n")
   error_code  =  ERROR[:provider_error]
 rescue Exception => e
   error_msg   = e
+  error_bt    = e.backtrace.join("\n")
   error_code  =  ERROR[:unknown_error]
 end
 
 STDERR.puts "ERROR: #{error_msg}" if error_msg
+STDERR.puts "BACKTRACE:\n#{error_bt}" if (options[:trace] && error_bt)
 exit error_code if error_code
