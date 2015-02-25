@@ -116,8 +116,6 @@ module Dopv
               raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition" unless v.is_a?(String)
             when 'cluster'
               raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition" unless v.is_a?(String)
-            when 'affinity_group'
-              raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition" unless v.is_a?(String)
             when 'keep_ha'
               if v != true && v != false
                 raise Errors::PlanError, "Node '#{n}' has invalid infrastructure properties definition"

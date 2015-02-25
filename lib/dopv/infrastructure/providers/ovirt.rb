@@ -74,6 +74,9 @@ module Dopv
 
             # Add disks
             vm = add_disks(vm, node_config[:disks], disk_db)
+
+            # Assign affinnity groups
+            vm = assign_affinity_groups(vm, node_config[:affinity_groups])
             
             # Start a node with cloudinit
             vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
@@ -171,6 +174,14 @@ module Dopv
             raise Errors::ProviderError, "No such volume with id '#{volume_id}'"
           end
         end
+
+        def get_affinity_group_id(affinity_group_name)
+          begin
+            @compute_client.affinity_groups.find {|ag| ag.name == affinity_group_name}.id
+          rescue
+            raise Errors::ProviderError, "No such affinity group '#{affinity_group_name}'"
+          end
+        end
         
         def add_interfaces(vm, interfaces)
           # Remove all interfaces defined by the template
@@ -194,11 +205,19 @@ module Dopv
           vm
         end
 
-        def assign_affinity_groups(affinity_groups)
+        def assign_affinity_groups(vm, affinity_groups)
+          if affinity_groups
+            affinity_groups.each do |ag_name|
+              ag_id = get_affinity_group_id(ag_name)
+              vm.add_to_affinity_group(:id => ag_id)
+              vm.wait_for { !locked? }
+              vm = vm.save
+            end
+          end
+          vm
         end
 
         def add_disks(vm, config_disks, disk_db)
-
           persistent_disks = disk_db.find_all {|pd| pd.node == vm.name}
           
           # Check if persistent disks DB is consistent
