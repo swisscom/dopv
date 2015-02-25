@@ -38,6 +38,8 @@ module Dopv
         def initialize(node_config, disk_db)
           @compute_client = nil
           vm = nil
+          
+          Dopv::log.info("Infrastructure: Ovirt: Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
 
           cloud_init = { :hostname => node_config[:nodename] }
           if node_config[:interfaces][0][:ip_address] != 'dhcp'
@@ -53,22 +55,18 @@ module Dopv
               :username     => node_config[:provider_username],
               :password     => node_config[:provider_password],
               :endpoint     => node_config[:provider_endpoint],
-              :datacenter   => node_config[:datacenter]
+              :datacenter   => node_config[:datacenter],
+              :nodename     => node_config[:nodename]
             )
+
+            if exist?(node_config[:nodename])
+              Dopv::log.warn("Infrastructure: Ovirt: Node #{node_config[:nodename]}: #{__method__}: Already exists, skipping.")
+              return
+            end
 
             # Create a VM
-            vm = @compute_client.servers.create(
-              :name     => node_config[:nodename],
-              :template => get_template_id(node_config[:image]),
-              :cores    => FLAVOR[node_config[:flavor].to_sym][:cores],
-              :memory   => FLAVOR[node_config[:flavor].to_sym][:memory],
-              :storage  => FLAVOR[node_config[:flavor].to_sym][:storage],
-              :cluster  => get_cluster_id(node_config[:cluster])
-            )
+            vm = create_vm(node_config)
 
-            # Wait until all locks are released
-            vm.wait_for { !locked? }
-            
             # Add interfaces
             vm = add_interfaces(vm, node_config[:interfaces])
 
@@ -90,7 +88,7 @@ module Dopv
               disks.each {|disk| vm.detach_volume(:id => disk.id)} rescue nil
               vm.destroy
             end
-            raise Errors::ProviderError, "Error while creating '#{node_config[:nodename]}': #{e}"
+            raise Errors::ProviderError, "Infrastructure: Ovirt: Node #{node_config[:nodename]}: #{e}"
           end
         end
 
@@ -117,7 +115,10 @@ module Dopv
         end
 
         def create_compute_client(attrs)
+          Dopv::log.info("Infrastructure: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Creating compute client.")
+          
           # Find the datacenter ID
+          Dopv::log.debug("Infrastructure: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Getting data center ID.")
           compute_client = Fog::Compute.new(
               :provider           => 'ovirt',
               :ovirt_username     => attrs[:username],
@@ -129,9 +130,10 @@ module Dopv
           begin
             datacenter_id = compute_client.datacenters.find { |dc| dc[:name] == attrs[:datacenter] }[:id]
           rescue
-            raise Errors::ProviderError, "No such datacenter '#{attrs[:datacenter]}'"
+            raise Errors::ProviderError, "#{__method__} #{attrs[:datacenter]}: No such datacenter"
           end
           # Get a new compute client from a proper datacenter
+          Dopv::log.debug("Infrastructure: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Recreating client with proper datacenter.")
           Fog::Compute.new(
               :provider           => 'ovirt',
               :ovirt_username     => attrs[:username],
@@ -143,11 +145,39 @@ module Dopv
           )
         end
 
+        def create_vm(attrs)
+          Dopv::log.info("Infrastructure: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Trying to create VM.")
+          begin
+            vm = @compute_client.servers.create(
+              :name     => attrs[:nodename],
+              :template => get_template_id(attrs[:image]),
+              :cores    => FLAVOR[attrs[:flavor].to_sym][:cores],
+              :memory   => FLAVOR[attrs[:flavor].to_sym][:memory],
+              :storage  => FLAVOR[attrs[:flavor].to_sym][:storage],
+              :cluster  => get_cluster_id(attrs[:cluster])
+            )
+            
+            # Wait until all locks are released
+            vm.wait_for { !locked? }
+          rescue Exception => e
+            raise Errors::ProviderError, "#{__method__}: #{e.message}"
+          end
+          vm
+        end
+
+        def exist?(node_name)
+          begin
+            @compute_client.servers.find {|vm| vm.name == node_name} ? true : false
+          rescue => e
+            raise Errors::ProviderError, "#{__method__}: #{e.message}."
+          end
+        end
+
         def get_cluster_id(cluster_name)
           begin
             @compute_client.list_clusters.find { |cl| cl[:name] == cluster_name }[:id]
           rescue
-            raise Errors::ProviderError, "No such cluster '#{cluster_name}'"
+            raise Errors::ProviderError, "#{__method__} #{cluster_name}: No such cluster."
           end
         end
 
@@ -155,7 +185,7 @@ module Dopv
           begin
             @compute_client.list_templates.find { |tpl| tpl[:name] == template_name }[:id]
           rescue
-            raise Errors::ProviderError, "No such template '#{template_name}'"
+            raise Errors::ProviderError, "#{__method__} #{template_name}: No such template."
           end
         end
         
@@ -163,7 +193,7 @@ module Dopv
           begin
             @compute_client.storage_domains.find { |sd| sd.name == storage_domain_name}.id
           rescue
-            raise Errors::ProviderError, "No such storage domain '#{storage_domain_name}'"
+            raise Errors::ProviderError, "#{__method__} #{storage_domain_name}: No such storage domain."
           end
         end
 
@@ -171,7 +201,7 @@ module Dopv
           begin
             @compute_client.volumes.find { |vol| vol.id == volume_id }
           rescue
-            raise Errors::ProviderError, "No such volume with id '#{volume_id}'"
+            raise Errors::ProviderError, "#{__method__} #{volume_id}: No such volume id."
           end
         end
 
@@ -179,20 +209,23 @@ module Dopv
           begin
             @compute_client.affinity_groups.find {|ag| ag.name == affinity_group_name}.id
           rescue
-            raise Errors::ProviderError, "No such affinity group '#{affinity_group_name}'"
+            raise Errors::ProviderError, "#{__method__} #{affinity_group_name}: No such affinity group."
           end
         end
         
         def add_interfaces(vm, interfaces)
+          Dopv::log.info("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Trying to add interfaces.")
           # Remove all interfaces defined by the template
+          Dopv::log.debug("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Removing interfaces defined by template.")
           vm.interfaces.each { |interface| vm.destroy_interface(:id => interface.id) }
           # Create all interfaces defined in node configuration
           interfaces.each do |interface|
             begin
               network = @compute_client.list_networks(vm.cluster).find { |n| n.name == interface[:network] }
             rescue
-              raise Errors::ProviderError, "Cannot create interface, no such network '#{interface[:network]}'"
+              raise Errors::ProviderError, "#{__method__} #{interface[:network]}: No such network."
             end
+            Dopv::log.debug("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Adding interface #{interface[:name]}.")
             vm.add_interface(
               :network  => network.id,
               :name     => interface[:name],
@@ -206,9 +239,11 @@ module Dopv
         end
 
         def assign_affinity_groups(vm, affinity_groups)
+          Dopv::log.info("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Trying to assign affinity groups.")
           if affinity_groups
             affinity_groups.each do |ag_name|
               ag_id = get_affinity_group_id(ag_name)
+              Dopv::log.debug("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Assigning affinity group #{ag_name}.")
               vm.add_to_affinity_group(:id => ag_id)
               vm.wait_for { !locked? }
               vm = vm.save
@@ -218,9 +253,13 @@ module Dopv
         end
 
         def add_disks(vm, config_disks, disk_db)
+          Dopv::log.info("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Trying to add disks.")
+              
+          Dopv::log.debug("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Loading persistent disks DB.")
           persistent_disks = disk_db.find_all {|pd| pd.node == vm.name}
           
           # Check if persistent disks DB is consistent
+          Dopv::log.debug("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Checking DB integrity.")
           persistent_disks.each do |pd|
             # Disk exists in state DB but not in plan
             unless config_disks.find {|cd| pd.name == cd[:name]}
@@ -250,6 +289,7 @@ module Dopv
 
           # Attach all persistent disks
           persistent_disks.each do |pd|
+            Dopv::log.debug("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Attaching disk #{pd.name} [#{pd.id}].")
             vm.attach_volume(:id => pd.id)
             vm.wait_for { !locked? }
             vm = vm.save
@@ -259,6 +299,7 @@ module Dopv
           # record them into DB
           config_disks.each do |cd|
             unless vm.volumes.find {|vol| vol.alias == cd[:name]}
+              Dopv::log.debug("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Creating disk #{cd[:name]} [#{cd[:size]}].")
               size = case cd[:size]
                      when /[1-9]*[Mm]/
                        (cd[:size].split(/[Mm]/)[0].to_f*1024*1024).to_i
@@ -278,6 +319,7 @@ module Dopv
               vm.wait_for { !locked? }
               vm = vm.save
               # Record volume to a persistent disks database
+              Dopv::log.debug("Infrastructure: Ovirt: Node #{vm.name}: #{__method__}: Recording disk #{cd[:name]} into DB.")
               disk = vm.volumes.find {|vol| vol.alias == cd[:name]}
               disk_db << {
                 :node => vm.name,

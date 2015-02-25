@@ -6,6 +6,7 @@
 
 require 'optparse'
 require 'dopv'
+require 'pry-debugger'
 
 ERROR = {
   :parse_error    => 1,
@@ -52,6 +53,6 @@ rescue Exception => e
   error_code  =  ERROR[:unknown_error]
 end
 
-STDERR.puts "ERROR: #{error_msg}" if error_msg
-STDERR.puts "BACKTRACE:\n#{error_bt}" if (options[:trace] && error_bt)
+Dopv::log.fatal { error_msg.message } if error_msg
+STDERR.puts "\n#{error_bt}" if (options[:trace] && error_bt)
 exit error_code if error_code
