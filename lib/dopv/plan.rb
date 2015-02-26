@@ -10,7 +10,7 @@ module Dopv
       when Hash
         new(plan, disk_db_file)
       else
-        raise Errors::PlanError, "Plan: The plan must be a string or hash."
+        raise Errors::PlanError, "#{__method__}: The plan must be a string or hash"
       end
     end
 
@@ -19,10 +19,13 @@ module Dopv
       @plan = plan
       @disk_db = PersistentDisk::load(disk_db_file)
       
+      Dopv::log.info("Plan: #{__method__}: Creation.")
+
       # Validate plan
       validate
       
       # Generate node definition according to plan
+      Dopv::log.debug("Plan: #{__method__}: Parsing.")
       infrastructures = @plan['infrastructures']
       @plan['nodes'].each do |n, d|
         node = {}
@@ -62,20 +65,22 @@ module Dopv
     private
 
     def validate
+      Dopv::log.debug("Plan: #{__method__}: Validating.")
       # A plan must be of a Hash type and it must have at least clouds and nodes
       # definitions.
-      raise Errors::PlanError, 'Plan: The plan must be of hash type.' unless @plan.is_a?(Hash)
+      raise Errors::PlanError, "#{__method__}: The plan must be a Hash" unless @plan.is_a?(Hash)
       if !@plan.has_key?('infrastructures') || !@plan.has_key?('nodes')
-        raise Errors::PlanError, 'Plan: infrastructures and nodes must be defined.'
+        raise Errors::PlanError, "#{__method__}: Infrastructures and nodes must be defined"
       end
       # Infrastructure and node definitions must be groupped into hashes.
       if !@plan['infrastructures'].is_a?(Hash) || !@plan['nodes'].is_a?(Hash)
-        raise Errors::PlanError, 'Plan: infrastructures and nodes must be of hash type.'
+        raise Errors::PlanError, "#{__method__}: Infrastructures and nodes must be Hash"
       end
       @plan['infrastructures'].each do |i, d|
-        raise Errors::PlanError, "Plan: Infrastructure #{i}: Unsupported type." unless Infrastructure.supported?(d)
+        raise Errors::PlanError, "#{__method__}: Infrastructure #{i}: Unsupported type" unless Infrastructure.supported?(d)
+        raise Errors::PlanError, "#{__method__}: Infrastructure #{i}: Networks definition missing" unless d.has_key?('networks')
         d['networks'].each_value do |v|
-          error_msg = "Plan: Infrastructure #{i}: Invalid network definition."
+          error_msg = "#{__method__}: Infrastructure #{i}: Invalid network definition"
           if !v.is_a?(Hash) || !v['ip_pool'].is_a?(Hash) ||
              !v['ip_netmask'].is_a?(String) || !v['ip_defgw'].is_a?(String) ||
              !v['ip_pool']['from'].is_a?(String) || !v['ip_pool']['to'].is_a?(String)
@@ -104,11 +109,11 @@ module Dopv
       @plan['nodes'].each do |n, d|
         if !(d.is_a?(Hash) && d['infrastructure'].is_a?(String) && d['flavor'].is_a?(String) &&
              d['image'].is_a?(String) && d['interfaces'].is_a?(Hash))
-          raise Errors::PlanError, "Plan: Node #{n}: Invalid node definition."
+          raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid node definition"
         end
-        raise Errors::PlanError, "Plan: Node #{n}: Points to invalid infrastructure." unless @plan['infrastructures'].has_key?(d['infrastructure'])
+        raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid infrastructure pointer" unless @plan['infrastructures'].has_key?(d['infrastructure'])
         if d.has_key?('infrastructure_properties')
-          error_msg = "Plan: Node #{n}: Invalid infrastructure properties definition."
+          error_msg = "#{__method__}: Node #{n}: Invalid infrastructure properties definition"
           if !d['infrastructure_properties'].is_a?(Hash)
             raise Errors::PlanError, error_msg
           end
@@ -133,13 +138,13 @@ module Dopv
         # Networks
         d['interfaces'].each do |i, v|
           if !v.is_a?(Hash) || !v['network'].is_a?(String) || !v['ip'].is_a?(String)
-            raise Errors::PlanError, "Plan: Node #{n}: Invalid interface definition."
+            raise Errors::PlanError, "Node #{n}: Invalid interface definition"
           end
           unless @plan['infrastructures'][d['infrastructure']]['networks'].has_key?(v['network'])
-            raise Errors::PlanError, "Plan: Node #{n}: Network points to invalid network definition."
+            raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid network pointer"
           end
           if v['ip'] != 'dhcp'
-            error_msg = "Plan: Node #{n}: has an invalid IP definition."
+            error_msg = "#{__method__}: Node #{n}: Invalid IP definition"
             begin
               ip = IPAddr.new(v['ip'])
               ip_from   = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['from'])
@@ -156,11 +161,11 @@ module Dopv
 
         # Disks
         if d.has_key?('disks')
-          raise Errors::PlanError, "Plan: Node #{n}: Invalid disk definition." unless d['disks'].is_a?(Array)
+          raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid disk definition" unless d['disks'].is_a?(Array)
           d['disks'].each do |dsk|
             if !dsk.is_a?(Hash) || !dsk['name'].is_a?(String) ||
                !dsk['pool'].is_a?(String) || !dsk['size'].is_a?(String) || dsk['size'] !~ /[1-9]*[MGTmgt]/
-              raise Errors::PlanError, "Plan: Node #{n}: Invalid disk name and/or size definition."
+              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid disk name and/or size definition"
             end
           end
         end
@@ -168,17 +173,17 @@ module Dopv
         # DNS
         if d.has_key?('dns')
           if !d['dns'].is_a?(Hash) || !d['dns']['nameserver'].is_a?(Array)
-            raise Errors::PlanError, "Plan: Node #{n}: Invalid dns specification."
+            raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid DNS specification"
           end
           d['dns']['nameserver'].each do |srv|
             begin
               IPAddr.new(srv)
             rescue
-              raise Errors::PlanError, "Plan: Node #{n}: Invalid name server definition."
+              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid name server definition"
             end
           end
           if d['dns'].has_key?('domain') && !d['dns']['domain']
-            raise Errors::PlanError, "Plan: Node #{n}: Invalid search domain definition."
+            raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid search domain definition"
           end
         end
       end

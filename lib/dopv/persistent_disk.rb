@@ -19,7 +19,7 @@ module Dopv
           @pool = attrs[:pool]
           @size = attrs[:size].to_i
         else
-          raise Errors::PersistentDiskError, "Invalid disk entry."
+          raise Errors::PersistentDiskError, "Invalid disk entry"
         end
       end
 
@@ -35,7 +35,7 @@ module Dopv
       end
 
       def update(attrs={})
-        raise Errors::PersistentDiskError, "Update attributes must be a hash." unless attrs.is_a?(Hash)
+        raise Errors::PersistentDiskError, "Update attributes must be a hash" unless attrs.is_a?(Hash)
         @node = attrs[:node] if attrs[:node]
         @name = attrs[:name] if attrs[:name]
         @id   = attrs[:id]   if attrs[:id]
@@ -82,7 +82,7 @@ module Dopv
       def append(entry)
         each do |disk|
           if disk == entry
-            raise Errors::PersistentDiskError, "Disk #{disk.name} already exists for node #{disk.node}."
+            raise Errors::PersistentDiskError, "Disk #{disk.name} already exists for node #{disk.node}"
           end
         end
         if entry.is_a?(Entry)
@@ -106,11 +106,11 @@ module Dopv
         when Entry
           disk = find {|d| d == entry}
         when Hash
-          raise Errors::PersistentDiskError, "Entry hash must contain a node name." unless entry.has_key?(:node)
-          raise Errors::PersistentDiskError, "Entry hash must contain a disk name." unless entry.has_key?(:name)
+          raise Errors::PersistentDiskError, "Entry hash must contain a node name" unless entry.has_key?(:node)
+          raise Errors::PersistentDiskError, "Entry hash must contain a disk name" unless entry.has_key?(:name)
           disk = find {|d| d.node == entry[:node] && d.name == entry[:name]}
         else
-          raise Errors::PersistentDiskError, "Disk entry must be Hash or Entry."
+          raise Errors::PersistentDiskError, "Disk entry must be Hash or Entry"
         end
         disk.update(attrs) if disk
       end
@@ -120,7 +120,7 @@ module Dopv
         when Entry
           @@db.delete_if {|disk| disk == entry}
         when Hash
-          raise Errors::PersistentDiskError, "Entry hash must contain at least a node name." unless entry.has_key?(:node)
+          raise Errors::PersistentDiskError, "Entry hash must contain at least a node name" unless entry.has_key?(:node)
           if entry.has_key?(:name)
             @@db.delete_if {|disk| disk.node == entry[:node] && disk.name == entry[:name]}
           else
