@@ -4,6 +4,8 @@
 # DOPv command line client
 #
 
+$:.unshift File.join(File.dirname(__FILE__), *%w[.. lib])
+
 require 'optparse'
 require 'dopv'
 
