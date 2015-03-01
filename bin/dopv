@@ -7,6 +7,8 @@
 require 'optparse'
 require 'dopv'
 
+PROGNAME = 'dopv'
+
 ERROR_CODES = {
   :parse_error    => 1,
   :plan_error     => 2,
@@ -21,15 +23,38 @@ ERROR_SOURCES = {
   :unknown_error  => 'unknown'
 }
 
-options = {}
+LOG_LEVELS = {
+  :debug  => Logger::DEBUG,
+  :info   => Logger::INFO,
+  :warn   => Logger::WARN,
+  :error  => Logger::ERROR,
+  :fatal  => Logger::FATAL
+}
+
+options = {
+  :logfile  => STDOUT,
+  :loglevel => LOG_LEVELS[:info]
+}
 error_code = 0
 
 parser = OptionParser.new do |opts|
   opts.banner = 'Usage: dopv [options]'
-  opts.on('-p', '--plan FILE', String, 'Specify a plan file to execute') { |file| options[:plan] = file }
-  opts.on('-d', '--disk-db FILE', String, 'Specify disk state file') { |file| options[:disk_db] = file }
-  opts.on('-t', '--trace', 'Show back traces on errors') { |trace| options[:trace] = true }
-  opts.on('-h', '--help', String, 'Display help') do
+  opts.on("-p", "--plan FILE",
+          "Specify a plan file to execute") {|file| options[:plan] = file}
+  opts.on("-d", "--disk-db FILE",
+          "Specify disk state file") {|file| options[:disk_db] = file}
+  opts.on("-l", "--log-file FILE",
+          "Specify log file (by default standard output)") do |file|
+    options[:logfile] = file if file
+  end
+  opts.on("-v", "--log-level LEVEL",
+          "Specify a minimal log level to log",
+          "(can be one of debug, info - the default, warning, error)") do |level|
+            options[:loglevel] = LOG_LEVELS[level.to_sym]  if level
+  end
+  opts.on("-t", "--trace",
+          "Show back traces on errors") {|trace| options[:trace] = true}
+  opts.on("-h", "--help", "Display help") do
     puts opts
     exit
   end
@@ -40,15 +65,23 @@ ARGV << "-h" if ARGV.empty?
 begin
  parser.parse!
 
+ Dopv.log(options[:logfile])
+ Dopv.log.progname = PROGNAME
+ Dopv.log.level = options[:loglevel]
+
  plan = Dopv::Plan.load(options[:plan], options[:disk_db])
  plan.execute
+
 rescue OptionParser::ParseError => e
   error_code = ERROR_CODES[:parse_error]
 rescue Dopv::Errors::PlanError => e
   error_code = ERROR_CODES[:plan_error]
 rescue Dopv::Errors::ProviderError => e
   error_code =  ERROR_CODES[:provider_error]
+rescue SystemExit
+  nil
 rescue Exception => e
+  binding.pry
   error_code =  ERROR_CODES[:unknown_error]
 end
 
