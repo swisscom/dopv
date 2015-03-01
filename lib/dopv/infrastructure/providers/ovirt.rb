@@ -119,14 +119,11 @@ module Dopv
               :ovirt_username     => attrs[:username],
               :ovirt_password     => attrs[:password],
               :ovirt_url          => attrs[:endpoint],
-              :ovirt_ca_cert_file => get_endpoint_ca_cert(attrs[:endpoint]),
-              :ovirt_ca_no_verify => true
+              :ovirt_ca_cert_file => get_endpoint_ca_cert(attrs[:endpoint])
           )
-          begin
-            datacenter_id = compute_client.datacenters.find { |dc| dc[:name] == attrs[:datacenter] }[:id]
-          rescue
-            raise Errors::ProviderError, "#{__method__} #{attrs[:datacenter]}: No such datacenter"
-          end
+          datacenter = compute_client.datacenters.find { |dc| dc[:name] == attrs[:datacenter] }
+          raise Errors::ProviderError, "#{__method__} #{attrs[:datacenter]}: No such data center" unless datacenter
+
           # Get a new compute client from a proper datacenter
           Dopv::log.debug("Provider: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Recreating client with proper datacenter.")
           Fog::Compute.new(
@@ -135,8 +132,7 @@ module Dopv
               :ovirt_password     => attrs[:password],
               :ovirt_url          => attrs[:endpoint],
               :ovirt_ca_cert_file => get_endpoint_ca_cert(attrs[:endpoint]),
-              :ovirt_ca_no_verify => true,
-              :ovirt_datacenter   => datacenter_id
+              :ovirt_datacenter   => datacenter[:id]
           )
         end
 
@@ -183,43 +179,33 @@ module Dopv
         end
 
         def get_cluster_id(cluster_name)
-          begin
-            @compute_client.list_clusters.find { |cl| cl[:name] == cluster_name }[:id]
-          rescue
-            raise Errors::ProviderError, "#{__method__} #{cluster_name}: No such cluster"
-          end
+          cluster =  @compute_client.list_clusters.find { |cl| cl[:name] == cluster_name }
+          raise Errors::ProviderError, "#{__method__} #{cluster_name}: No such cluster" unless cluster
+          cluster[:id]
         end
 
         def get_template_id(template_name)
-          begin
-            @compute_client.list_templates.find { |tpl| tpl[:name] == template_name }[:id]
-          rescue
-            raise Errors::ProviderError, "#{__method__} #{template_name}: No such template"
-          end
+          template = @compute_client.list_templates.find { |tpl| tpl[:name] == template_name }
+          raise Errors::ProviderError, "#{__method__} #{template_name}: No such template" unless template
+          template[:id]
         end
         
         def get_storage_domain_id(storage_domain_name)
-          begin
-            @compute_client.storage_domains.find { |sd| sd.name == storage_domain_name}.id
-          rescue
-            raise Errors::ProviderError, "#{__method__} #{storage_domain_name}: No such storage domain"
-          end
+          storage_domain = @compute_client.storage_domains.find { |sd| sd.name == storage_domain_name}
+          raise Errors::ProviderError, "#{__method__} #{storage_domain_name}: No such storage domain" unless storage_domain
+          storage_domain.id
         end
 
         def get_volume_obj(volume_id)
-          begin
-            @compute_client.volumes.find { |vol| vol.id == volume_id }
-          rescue
-            raise Errors::ProviderError, "#{__method__} #{volume_id}: No such volume id"
-          end
+          volume = @compute_client.volumes.find { |vol| vol.id == volume_id }
+          raise Errors::ProviderError, "#{__method__} #{volume_id}: No such volume" unless volume
+          volume
         end
 
         def get_affinity_group_id(affinity_group_name)
-          begin
-            @compute_client.affinity_groups.find {|ag| ag.name == affinity_group_name}.id
-          rescue
-            raise Errors::ProviderError, "#{__method__} #{affinity_group_name}: No such affinity group"
-          end
+          affinity_group = @compute_client.affinity_groups.find {|ag| ag.name == affinity_group_name}
+          raise Errors::ProviderError, "#{__method__} #{affinity_group_name}: No such affinity group" unless affinity_group
+          affinity_group.id
         end
         
         def add_interfaces(vm, interfaces)
@@ -229,11 +215,8 @@ module Dopv
           vm.interfaces.each { |interface| vm.destroy_interface(:id => interface.id) }
           # Create all interfaces defined in node configuration
           interfaces.each do |interface|
-            begin
-              network = @compute_client.list_networks(vm.cluster).find { |n| n.name == interface[:network] }
-            rescue
-              raise Errors::ProviderError, "#{__method__} #{interface[:network]}: No such network"
-            end
+            network = @compute_client.list_networks(vm.cluster).find { |n| n.name == interface[:network] }
+            raise Errors::ProviderError, "#{__method__} #{interface[:network]}: No such network" unless network
             Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Adding interface #{interface[:name]}.")
             vm.add_interface(
               :network  => network.id,
