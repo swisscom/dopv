@@ -41,7 +41,6 @@ PATH
       colorize (~> 0.7.5)
       fog (~> 1.28.0)
       json (~> 1.8)
-      rbovirt (~> 0.1.0)
       rest-client (~> 1.7)
 
 GEM
