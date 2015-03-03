@@ -1,4 +1,13 @@
 GIT
+  remote: https://github.com/abenari/rbovirt.git
+  revision: 951fdc5a3d5337eceafef0ddf8fd3d16817d0cb9
+  ref: 951fdc5a3d5337eceafef0ddf8fd3d16817d0cb9
+  specs:
+    rbovirt (0.1.0)
+      nokogiri
+      rest-client (> 1.7.0)
+
+GIT
   remote: https://github.com/fog/fog.git
   revision: 9a05a06218ffecedc431919e0560b4d14b34a07e
   ref: 9a05a06218ffecedc431919e0560b4d14b34a07e
@@ -25,15 +34,6 @@ GIT
       ipaddress (~> 0.5)
       nokogiri (~> 1.5, >= 1.5.11)
 
-GIT
-  remote: https://github.com/pdilung/rbovirt.git
-  revision: b313b61b0b4e1509eef5154016d491127d1a85f4
-  branch: fix_72_and_73
-  specs:
-    rbovirt (0.0.35)
-      nokogiri
-      rest-client
-
 PATH
   remote: .
   specs:
@@ -41,7 +41,7 @@ PATH
       colorize (~> 0.7.5)
       fog (~> 1.28.0)
       json (~> 1.8)
-      rbovirt (~> 0.0.35)
+      rbovirt (~> 0.1.0)
       rest-client (~> 1.7)
 
 GEM
@@ -174,5 +174,5 @@ DEPENDENCIES
   pry
   pry-debugger
   rake
-  rbovirt (= 0.0.35)!
+  rbovirt (= 0.1.0)!
   rspec

@@ -27,6 +27,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "json", "~> 1.8"
   spec.add_dependency "colorize", "~> 0.7.5"
   spec.add_dependency "rest-client", "~> 1.7"
-  spec.add_dependency "rbovirt", "~> 0.0.35"
+  spec.add_dependency "rbovirt", "~> 0.1.0"
   spec.add_dependency "fog", "~> 1.28.0"
 end
