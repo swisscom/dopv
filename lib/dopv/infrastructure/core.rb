@@ -28,7 +28,12 @@ module Dopv
     end
 
     def self.bootstrap(node_config, disk_db)
-      Object.const_get("Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node_config[:provider].to_sym]}::Node").bootstrap(node_config, disk_db)
+      # Works only for Ruby 2.x and above
+      #Object.const_get("Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node_config[:provider].to_sym]}::Node").bootstrap(node_config, disk_db)
+      # Works also in Ruby 1.9x
+      klass_name = "Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node_config[:provider].to_sym]}::Node"
+      klass = klass_name.split('::').inject(Object) {|res, i| res.const_get(i)}
+      klass.bootstrap(node_config, disk_db)
     end
   end
 end
