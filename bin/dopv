@@ -83,7 +83,6 @@ rescue Dopv::Errors::ProviderError => e
 rescue SystemExit
   nil
 rescue Exception => e
-  binding.pry
   error_code =  ERROR_CODES[:unknown_error]
 end
 
