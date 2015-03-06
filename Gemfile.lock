@@ -1,22 +1,13 @@
 GIT
-  remote: https://github.com/abenari/rbovirt.git
-  revision: 951fdc5a3d5337eceafef0ddf8fd3d16817d0cb9
-  ref: 951fdc5a3d5337eceafef0ddf8fd3d16817d0cb9
-  specs:
-    rbovirt (0.1.0)
-      nokogiri
-      rest-client (> 1.7.0)
-
-GIT
-  remote: https://github.com/fog/fog.git
-  revision: 9a05a06218ffecedc431919e0560b4d14b34a07e
-  ref: 9a05a06218ffecedc431919e0560b4d14b34a07e
+  remote: https://github.com/pdilung/fog.git
+  revision: be1bb990d6bf0b0e8a0e7db7c8b6ac542688f105
+  branch: fix_3475_and_ha
   specs:
     fog (1.28.0)
       fog-atmos
       fog-aws (~> 0.0)
       fog-brightbox (~> 0.4)
-      fog-core (~> 1.27, >= 1.27.3)
+      fog-core (~> 1.27, >= 1.27.4)
       fog-ecloud
       fog-json
       fog-local
@@ -33,6 +24,15 @@ GIT
       fog-xml (~> 0.1.1)
       ipaddress (~> 0.5)
       nokogiri (~> 1.5, >= 1.5.11)
+
+GIT
+  remote: https://github.com/pdilung/rbovirt.git
+  revision: 67cc6c1bf6f2e3192767b27e409f4efecf077b01
+  branch: high_availability
+  specs:
+    rbovirt (0.1.0)
+      nokogiri
+      rest-client (> 1.7.0)
 
 PATH
   remote: .
@@ -59,7 +59,7 @@ GEM
     debugger-linecache (1.2.0)
     debugger-ruby_core_source (1.3.8)
     diff-lcs (1.2.5)
-    excon (0.44.3)
+    excon (0.44.4)
     fission (0.5.0)
       CFPropertyList (~> 2.2)
     fog-atmos (0.1.0)

@@ -161,12 +161,13 @@ module Dopv
           Dopv::log.info("Provider: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Trying to create VM.")
           begin
             vm = @compute_client.servers.create(
-              :name     => attrs[:nodename],
-              :template => get_template_id(attrs[:image]),
-              :cores    => FLAVOR[attrs[:flavor].to_sym][:cores],
-              :memory   => FLAVOR[attrs[:flavor].to_sym][:memory],
-              :storage  => FLAVOR[attrs[:flavor].to_sym][:storage],
-              :cluster  => get_cluster_id(attrs[:cluster])
+              :name         => attrs[:nodename],
+              :template     => get_template_id(attrs[:image]),
+              :cores        => FLAVOR[attrs[:flavor].to_sym][:cores],
+              :memory       => FLAVOR[attrs[:flavor].to_sym][:memory],
+              :storage      => FLAVOR[attrs[:flavor].to_sym][:storage],
+              :cluster      => get_cluster_id(attrs[:cluster]),
+              :ha           => attrs[:keep_ha].nil? ? true: attrs[:keep_ha]
             )
             
             # Wait until all locks are released
