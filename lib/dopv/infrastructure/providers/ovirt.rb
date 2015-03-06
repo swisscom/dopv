@@ -41,12 +41,18 @@ module Dopv
           
           Dopv::log.info("Provider: Ovirt: Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
 
-          cloud_init = { :hostname => node_config[:nodename] }
-          if node_config[:interfaces][0][:ip_address] != 'dhcp'
-            cloud_init[:nicname]  = node_config[:interfaces][0][:name]
-            cloud_init[:ip]       = node_config[:interfaces][0][:ip_address]
-            cloud_init[:netmask]  = node_config[:interfaces][0][:ip_netmask]
-            cloud_init[:gateway]  = node_config[:interfaces][0][:ip_gateway]
+          cloud_init = { :hostname => node_config[:nodename], :user => 'root' }
+
+          cloud_init[:password] = node_config[:credentials][:root_password] if node_config[:credentials][:root_password]
+          cloud_init[:ssh_authorized_keys] = node_config[:credentials][:root_ssh_keys] if node_config[:credentials][:root_ssh_keys]
+
+          node_config[:interfaces].each do |nic|
+            if nic[:cloudinit] == true && nic[:ipaddress] != 'dhcp'
+              cloud_init[:nicname]  = nic[:name]
+              cloud_init[:ip]       = nic[:ip_address]
+              cloud_init[:netmask]  = nic[:ip_netmask]
+              cloud_init[:gateway]  = nic[:ip_gateway]
+            end
           end
           
           begin
@@ -144,6 +150,7 @@ module Dopv
             disks.each do |disk|
               Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to detaching disk #{disk.name}.")
               vm.detach_volume(:id => disk.id) rescue nil
+              vm.wait_for { !locked? }
             end
             Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Destroying VM.")
             vm.destroy
@@ -212,21 +219,32 @@ module Dopv
           Dopv::log.info("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to add interfaces.")
           # Remove all interfaces defined by the template
           Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Removing interfaces defined by template.")
-          vm.interfaces.each { |interface| vm.destroy_interface(:id => interface.id) }
-          # Create all interfaces defined in node configuration
-          interfaces.each do |interface|
-            network = @compute_client.list_networks(vm.cluster).find { |n| n.name == interface[:network] }
-            raise Errors::ProviderError, "#{__method__} #{interface[:network]}: No such network" unless network
-            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Adding interface #{interface[:name]}.")
-            vm.add_interface(
-              :network  => network.id,
-              :name     => interface[:name],
-              :plugged  => true,
-              :linked   => true,
-            )
+          vm.interfaces.each do |nic|
+            vm.destroy_interface(:id => nic.id)
             vm.wait_for { !locked? }
-            vm = vm.save
           end
+
+          # Create network interfaces. In this step, interfaces are not assigned. This step
+          # is used for MAC addresses reservation
+          (1..interfaces.size).each do |idx|
+            nicname = "tmp%d" % idx
+            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Creating interface #{nicname}.")
+            vm.add_interface(:name => nicname, :network_name => 'rhevm', :plugged => true, :linked => true)
+            vm.wait_for { !locked? }
+          end
+
+          # Rearrange interfaces by their MAC addresses and assign them into
+          # appropriate networks
+          interfaces.reverse!
+          vm.interfaces.reload.sort_by do |nic| nic.mac
+            config = interfaces.pop
+            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Configuring interface #{nic.name} (#{nic.mac}) as #{config[:name]} in #{config[:network]}.")
+            vm.update_interface(:id => nic.id, :name => config[:name], :network_name => config[:network])
+            vm.wait_for { !locked? }
+          end
+
+          # Explicitly reload nics & return VM
+          vm.interfaces.reload
           vm
         end
 
@@ -238,7 +256,6 @@ module Dopv
               Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Assigning affinity group #{ag_name}.")
               vm.add_to_affinity_group(:id => ag_id)
               vm.wait_for { !locked? }
-              vm = vm.save
             end
           end
           vm
@@ -284,7 +301,6 @@ module Dopv
             Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Attaching disk #{pd.name} [#{pd.id}].")
             vm.attach_volume(:id => pd.id)
             vm.wait_for { !locked? }
-            vm = vm.save
           end
 
           # Create those disks that do not exist in peristent disks DB and
@@ -301,15 +317,8 @@ module Dopv
                        (cd[:size].split(/[Tt]/)[0].to_f*1024*1024*1024*1024).to_i
                      end
               storage_domain = get_storage_domain_id(cd[:pool])
-              vm.add_volume(
-                :storage_domain => storage_domain,
-                :size           => size,
-                :bootable       => 'false',
-                :alias          => cd[:name]
-              )
-              # Wait until all locks are released and re-save the VM state 
+              vm.add_volume( :storage_domain => storage_domain, :size => size, :bootable => 'false', :alias => cd[:name])
               vm.wait_for { !locked? }
-              vm = vm.save
               # Record volume to a persistent disks database
               Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Recording disk #{cd[:name]} into DB.")
               disk = vm.volumes.find {|vol| vol.alias == cd[:name]}
