@@ -47,11 +47,17 @@ module Dopv
           interface = {}
           interface[:name] = k
           interface[:network] = v['network']
-          interface[:ip_address] = v['ip']
-          interface[:ip_netmask] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_netmask']
-          interface[:ip_gateway] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
+          if v['ip']
+            interface[:ip_address] = v['ip']
+            interface[:ip_netmask] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_netmask']
+            if infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
+              interface[:ip_gateway] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
+            end
+          end
+          interface[:cloudinit] = v['cloudinit'] || false
           (node[:interfaces] ||= []) << interface
         end
+        node[:credentials] = Hash[d['credentials'].map { |k, v| [k.to_sym, v] }] unless d['credentials'].nil?
         node[:dns] = Hash[d['dns'].map { |k, v| [k.to_sym, v] }] unless d['dns'].nil?
         @nodes << node
       end
@@ -81,20 +87,26 @@ module Dopv
         raise Errors::PlanError, "#{__method__}: Infrastructure #{i}: Networks definition missing" unless d.has_key?('networks')
         d['networks'].each_value do |v|
           error_msg = "#{__method__}: Infrastructure #{i}: Invalid network definition"
-          if !v.is_a?(Hash) || !v['ip_pool'].is_a?(Hash) ||
-             !v['ip_netmask'].is_a?(String) || !v['ip_defgw'].is_a?(String) ||
-             !v['ip_pool']['from'].is_a?(String) || !v['ip_pool']['to'].is_a?(String)
-            raise Errors::PlanError, error_msg
-          end
-          begin
-            IPAddr.new(v['ip_netmask'])
-            ip_from   = IPAddr.new(v['ip_pool']['from'])
-            ip_to     = IPAddr.new(v['ip_pool']['to'])
-            ip_defgw  = IPAddr.new(v['ip_defgw'])
-            if ip_from > ip_to || !(ip_defgw < ip_from || ip_defgw > ip_to)
+          case v
+          when nil # No IP configuration
+            Dopv::log.warn("Plan: #{__method__}: No IP parameters specified")
+          when Hash # With IP configuration
+            if !v['ip_pool'].is_a?(Hash) || !v['ip_pool']['from'].is_a?(String) ||
+               !v['ip_pool']['to'].is_a?(String) || !v['ip_netmask'].is_a?(String)
               raise Errors::PlanError, error_msg
             end
-          rescue
+            begin
+              IPAddr.new(v['ip_netmask'])
+              ip_from   = IPAddr.new(v['ip_pool']['from'])
+              ip_to     = IPAddr.new(v['ip_pool']['to'])
+              ip_defgw  = IPAddr.new(v['ip_defgw']) if v['ip_defgw']
+              if ip_from > ip_to || !(ip_defgw < ip_from || ip_defgw > ip_to)
+                raise Errors::PlanError, error_msg
+              end
+            rescue
+              raise Errors::PlanError, error_msg
+            end
+          else
             raise Errors::PlanError, error_msg
           end
         end
@@ -137,25 +149,28 @@ module Dopv
 
         # Networks
         d['interfaces'].each do |i, v|
-          if !v.is_a?(Hash) || !v['network'].is_a?(String) || !v['ip'].is_a?(String)
-            raise Errors::PlanError, "Node #{n}: Invalid interface definition"
+          if !v.is_a?(Hash) || !v['network'].is_a?(String)
+            raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid interface definition"
           end
           unless @plan['infrastructures'][d['infrastructure']]['networks'].has_key?(v['network'])
             raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid network pointer"
           end
-          if v['ip'] != 'dhcp'
+          if v['ip'] && v['ip'] != "dhcp"
             error_msg = "#{__method__}: Node #{n}: Invalid IP definition"
             begin
               ip = IPAddr.new(v['ip'])
               ip_from   = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['from'])
               ip_to     = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['to'])
-              ip_defgw  = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_defgw'])
+              ip_defgw  = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_defgw'] || '0.0.0.0')
               if ip < ip_from || ip > ip_to || ip == ip_defgw
                 raise Errors::PlanError, error_msg 
               end
             rescue
               raise Errors::PlanError, error_msg
             end
+          end
+          if v['cloudinit'] && v['cloudinit'] != true && v['cloudinit'] != false
+            raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid cloud init flag definition"
           end
         end
 
@@ -170,6 +185,18 @@ module Dopv
           end
         end
 
+        # Credentials
+        if d.has_key?('credentials')
+          if ! d['credentials'].is_a?(Hash)
+              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid credentials specification"
+          end
+          if d['credentials'].has_key?('root_password') && !d['credentials']['root_password'].is_a?(String)
+              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid root password definition"
+          end
+          if d['credentials'].has_key?('root_ssh_keys') && !d['credentials']['root_ssh_keys'].is_a?(Array)
+              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid root ssh keys definition"
+          end
+        end
         # DNS
         if d.has_key?('dns')
           if !d['dns'].is_a?(Hash) || !d['dns']['nameserver'].is_a?(Array)
