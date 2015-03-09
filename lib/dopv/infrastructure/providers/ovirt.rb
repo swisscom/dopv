@@ -43,8 +43,8 @@ module Dopv
 
           cloud_init = { :hostname => node_config[:nodename], :user => 'root' }
 
-          cloud_init[:password] = node_config[:credentials][:root_password] if node_config[:credentials][:root_password]
-          cloud_init[:ssh_authorized_keys] = node_config[:credentials][:root_ssh_keys] if node_config[:credentials][:root_ssh_keys]
+          cloud_init[:password] = (node_config[:credentials][:root_password] rescue nil)
+          cloud_init[:ssh_authorized_keys] = (node_config[:credentials][:root_ssh_keys] rescue nil)
 
           node_config[:interfaces].each do |nic|
             if nic[:cloudinit] == true && nic[:ipaddress] != 'dhcp'
