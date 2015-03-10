@@ -1,6 +1,7 @@
 GIT
   remote: https://github.com/fog/fog.git
   revision: 43fd4b0f4aea01b6b12ef510f7ae249f6119cb22
+  ref: 43fd4b0f4aea01b6b12ef510f7ae249f6119cb22
   specs:
     fog (1.28.0)
       fog-atmos
