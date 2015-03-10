@@ -1,7 +1,6 @@
 GIT
-  remote: https://github.com/pdilung/fog.git
-  revision: be1bb990d6bf0b0e8a0e7db7c8b6ac542688f105
-  branch: fix_3475_and_ha
+  remote: https://github.com/fog/fog.git
+  revision: 43fd4b0f4aea01b6b12ef510f7ae249f6119cb22
   specs:
     fog (1.28.0)
       fog-atmos
