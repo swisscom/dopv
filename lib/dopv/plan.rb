@@ -31,9 +31,10 @@ module Dopv
         node = {}
         # Infrastructure provider definitions
         node[:provider] = Infrastructure::SUPPORTED_TYPES[infrastructures[d['infrastructure']]['type'].to_sym]
-        node[:provider_username] = infrastructures[d['infrastructure']]['credentials']['username']
-        node[:provider_password] = infrastructures[d['infrastructure']]['credentials']['password']
-        node[:provider_endpoint] = infrastructures[d['infrastructure']]['endpoint']
+        node[:provider_username]  = infrastructures[d['infrastructure']]['credentials']['username']
+        node[:provider_password]  = infrastructures[d['infrastructure']]['credentials']['password']
+        node[:provider_apikey]    = infrastructures[d['infrastructure']]['credentials']['apikey']
+        node[:provider_endpoint]  = infrastructures[d['infrastructure']]['endpoint']
         # Node definitions
         node[:nodename] = n
         node[:image]    = d['image']
