@@ -5,35 +5,6 @@ require 'open-uri'
 module Dopv
   module Infrastructure
     module Ovirt
-      # Based on http://docs.openstack.org/openstack-ops/content/flavors.html
-      FLAVOR = {
-        :tiny     => {
-          :cores    => 1,
-          :memory   => 536870912,
-          :storage  => 1073741824
-        },
-        :small    => {
-          :cores    => 1,
-          :memory   => 2147483648,
-          :storage  => 10737418240
-        },
-        :medium   => {
-          :cores    => 2,
-          :memory   => 4294967296,
-          :storage  => 10737418240
-        },
-        :large    => {
-          :cores    => 4,
-          :memory   => 8589934592,
-          :storage  => 10737418240
-        },
-        :xlarge   => {
-          :cores    => 8,
-          :memory   => 1744830464,
-          :storage  => 10737418240
-        }
-      }
-
       class Node < BaseNode
         def initialize(node_config, disk_db)
           @compute_client = nil
@@ -176,14 +147,6 @@ module Dopv
             raise Errors::ProviderError, "#{__method__}: #{e}"
           end
           vm
-        end
-
-        def exist?(node_name)
-          begin
-            @compute_client.servers.find {|vm| vm.name == node_name} ? true : false
-          rescue => e
-            raise Errors::ProviderError, "#{__method__}: #{e}"
-          end
         end
 
         def get_cluster_id(cluster_name)

@@ -13,6 +13,35 @@ module Dopv
       :openstack  => 'OpenStack',
       :vsphere    => 'Vsphere'
     }
+
+    # Based on http://docs.openstack.org/openstack-ops/content/flavors.html
+    FLAVOR = {
+      :tiny     => {
+        :cores    => 1,
+        :memory   => 536870912,
+        :storage  => 1073741824
+      },
+      :small    => {
+        :cores    => 1,
+        :memory   => 2147483648,
+        :storage  => 10737418240
+      },
+      :medium   => {
+        :cores    => 2,
+        :memory   => 4294967296,
+        :storage  => 10737418240
+      },
+      :large    => {
+        :cores    => 4,
+        :memory   => 8589934592,
+        :storage  => 10737418240
+      },
+      :xlarge   => {
+        :cores    => 8,
+        :memory   => 1744830464,
+        :storage  => 10737418240
+      }
+    }
     
     def self.supported?(object)
       case object
