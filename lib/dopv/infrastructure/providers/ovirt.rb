@@ -9,11 +9,13 @@ module Dopv
         def initialize(node_config, disk_db)
           @compute_client = nil
           vm = nil
+          cloud_init = {}
           
           Dopv::log.info("Provider: Ovirt: Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
 
-          cloud_init = { :hostname => node_config[:nodename], :user => 'root' }
+          cloud_init[:hostname] = node_config[:fqdn] ? node_config[:fqdn] : node_config[:nodename]
 
+          cloud_init[:user] = 'root'
           cloud_init[:password] = (node_config[:credentials][:root_password] rescue nil)
           cloud_init[:ssh_authorized_keys] = (node_config[:credentials][:root_ssh_keys] rescue nil)
 
@@ -155,12 +157,6 @@ module Dopv
           cluster[:id]
         end
 
-        def get_template_id(template_name)
-          template = @compute_client.list_templates.find { |tpl| tpl[:name] == template_name }
-          raise Errors::ProviderError, "#{__method__} #{template_name}: No such template" unless template
-          template[:id]
-        end
-        
         def get_storage_domain_id(storage_domain_name)
           storage_domain = @compute_client.storage_domains.find { |sd| sd.name == storage_domain_name}
           raise Errors::ProviderError, "#{__method__} #{storage_domain_name}: No such storage domain" unless storage_domain
