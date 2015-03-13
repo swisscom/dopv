@@ -37,6 +37,7 @@ module Dopv
         node[:provider_endpoint]  = infrastructures[d['infrastructure']]['endpoint']
         # Node definitions
         node[:nodename] = n
+        node[:fqdn]     = d['fqdn']
         node[:image]    = d['image']
         node[:flavor]   = d['flavor']
         # Create an empty disks array

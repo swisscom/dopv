@@ -18,6 +18,39 @@ module Dopv
           raise Errors::ProviderError, "#{__method__}: #{e}"
         end
       end
+
+      def get_datacenter(datacenter_name, filters={})
+        datacenter = @compute_client.datacenters(filters).find do |dc|
+          if dc.is_a?(Hash) && dc.has_key?(:name)
+            dc[:name] == datacenter_name
+          elsif dc.methods.include?(:name)
+            dc.name == datacenter_name
+          else
+            raise Errors::ProviderError, "#{__method__} #{datacenter_name}: Unsupported datacenter type #{dc.class}"
+          end
+        end
+        raise Errors::ProviderError, "#{__method__} #{datacenter_name}: No such data center" unless datacenter
+        datacenter
+      end
+
+      def get_datacenter_id(datacenter_name, filters={})
+        datacenter = get_datacenter(datacenter_name, filters)
+        if datacenter.is_a?(Hash)
+          dc[:name]
+        else
+          dc.name
+        end
+      end
+
+      def get_template(template_name, filters={})
+        template = @compute_client.templates.all(filters).find { |tpl| tpl.name == template_name }
+        raise Errors::ProviderError, "#{__method__} #{template_name}: No such template" unless template
+        template
+      end
+
+      def get_template_id(template_name, filters={})
+        get_template(template_name, filters).id
+      end
     end
   end
 end
