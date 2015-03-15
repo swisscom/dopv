@@ -20,11 +20,13 @@ module Dopv
           cloud_init[:ssh_authorized_keys] = (node_config[:credentials][:root_ssh_keys] rescue nil)
 
           node_config[:interfaces].each do |nic|
-            if nic[:cloudinit] == true && nic[:ipaddress] != 'dhcp'
-              cloud_init[:nicname]  = nic[:name]
-              cloud_init[:ip]       = nic[:ip_address]
-              cloud_init[:netmask]  = nic[:ip_netmask]
-              cloud_init[:gateway]  = nic[:ip_gateway]
+            if nic[:ip_address]
+              cloud_init[:nicname] = nic[:name]
+              cloud_init[:ip]      = nic[:ip_address]
+              if nic[:ip_address] != 'dhcp'
+                cloud_init[:netmask]  = nic[:ip_netmask]
+                cloud_init[:gateway]  = nic[:ip_gateway]
+              end
             end
           end
           

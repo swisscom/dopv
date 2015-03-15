@@ -56,7 +56,6 @@ module Dopv
               interface[:ip_gateway] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
             end
           end
-          interface[:cloudinit] = v['cloudinit'] || false
           (node[:interfaces] ||= []) << interface
         end
         node[:credentials] = Hash[d['credentials'].map { |k, v| [k.to_sym, v] }] unless d['credentials'].nil?
@@ -170,9 +169,6 @@ module Dopv
             rescue
               raise Errors::PlanError, error_msg
             end
-          end
-          if v['cloudinit'] && v['cloudinit'] != true && v['cloudinit'] != false
-            raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid cloud init flag definition"
           end
         end
 
