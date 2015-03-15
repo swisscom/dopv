@@ -58,7 +58,11 @@ module Dopv
           end
           (node[:interfaces] ||= []) << interface
         end
+        # Add affinity groups
+        node[:affinity_groups] = d['affinity_groups'] if d['affinity_groups']
+        # Add credentials
         node[:credentials] = Hash[d['credentials'].map { |k, v| [k.to_sym, v] }] unless d['credentials'].nil?
+        # Add DNS
         node[:dns] = Hash[d['dns'].map { |k, v| [k.to_sym, v] }] unless d['dns'].nil?
         @nodes << node
       end
