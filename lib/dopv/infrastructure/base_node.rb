@@ -36,10 +36,20 @@ module Dopv
       def get_datacenter_id(datacenter_name, filters={})
         datacenter = get_datacenter(datacenter_name, filters)
         if datacenter.is_a?(Hash)
-          dc[:name]
+          dc[:id]
         else
-          dc.name
+          dc.id
         end
+      end
+
+      def get_cluster(cluster_name, filters={})
+        cluster = @compute_client.clusters(filters).find { |cl| cl.name == cluster_name }
+        raise Errors::ProviderError, "#{__method__} #{cluster_name}: No such cluster" unless cluster
+        cluster
+      end
+
+      def get_cluster_id(cluster_name, filters={})
+        get_cluster(cluster_name, filters).id
       end
 
       def get_template(template_name, filters={})

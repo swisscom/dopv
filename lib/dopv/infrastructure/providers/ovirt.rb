@@ -159,12 +159,6 @@ module Dopv
           vm
         end
 
-        def get_cluster_id(cluster_name)
-          cluster =  @compute_client.list_clusters.find { |cl| cl[:name] == cluster_name }
-          raise Errors::ProviderError, "#{__method__} #{cluster_name}: No such cluster" unless cluster
-          cluster[:id]
-        end
-
         def get_storage_domain_id(storage_domain_name)
           storage_domain = @compute_client.storage_domains.find { |sd| sd.name == storage_domain_name}
           raise Errors::ProviderError, "#{__method__} #{storage_domain_name}: No such storage domain" unless storage_domain
