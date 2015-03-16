@@ -145,6 +145,12 @@ module Dopv
               :ha           => attrs[:keep_ha].nil? ? true: attrs[:keep_ha]
             )
             
+            # For each disk, set up wipe after delete flag
+            vm.volumes.each do |vol|
+              Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Setting wipe after delete for disk #{vol.alias}.")
+              vm.update_volume(:id => vol.id, :wipe_after_delete => true)
+            end
+
             # Wait until all locks are released
             vm.wait_for { !locked? }
           rescue Exception => e
@@ -279,7 +285,7 @@ module Dopv
                        (cd[:size].split(/[Tt]/)[0].to_f*1024*1024*1024*1024).to_i
                      end
               storage_domain = get_storage_domain_id(cd[:pool])
-              vm.add_volume( :storage_domain => storage_domain, :size => size, :bootable => 'false', :alias => cd[:name])
+              vm.add_volume(:storage_domain => storage_domain, :size => size, :bootable => false, :alias => cd[:name], :wipe_after_delete => true)
               vm.wait_for { !locked? }
               # Record volume to a persistent disks database
               Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Recording disk #{cd[:name]} into DB.")

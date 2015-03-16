@@ -1,16 +1,7 @@
 GIT
-  remote: https://github.com/abenari/rbovirt.git
-  revision: c66c1bf0357d0de797097a47e7c150b6166f0f28
-  ref: c66c1bf0357d0de797097a47e7c150b6166f0f28
-  specs:
-    rbovirt (0.1.0)
-      nokogiri
-      rest-client (> 1.7.0)
-
-GIT
-  remote: https://github.com/fog/fog.git
-  revision: 4a869f551e89693008254891551715dcbcfb8035
-  ref: 4a869f551e89693008254891551715dcbcfb8035
+  remote: https://github.com/pdilung/fog.git
+  revision: 5ebb4b2c29ab55389d4ed42d30c6a6af2a4c4917
+  branch: wipe_disk_after_delete
   specs:
     fog (1.28.0)
       fog-atmos
@@ -33,6 +24,15 @@ GIT
       fog-xml (~> 0.1.1)
       ipaddress (~> 0.5)
       nokogiri (~> 1.5, >= 1.5.11)
+
+GIT
+  remote: https://github.com/pdilung/rbovirt.git
+  revision: da584d592d2b30724f6c2ef442e9da2db348a9b4
+  branch: wipe_disk_after_delete
+  specs:
+    rbovirt (0.1.0)
+      nokogiri
+      rest-client (> 1.7.0)
 
 PATH
   remote: .
