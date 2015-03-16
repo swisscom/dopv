@@ -26,7 +26,7 @@ module Dopv
             end
           end
           
-          #begin
+          begin
             # Try to get the datacenter ID first.
             @compute_client = create_compute_client(
               :username     => node_config[:provider_username],
@@ -45,8 +45,10 @@ module Dopv
             # Create a VM
             vm = create_vm(node_config)
 
-            ## Add interfaces
-            #vm = add_interfaces(vm, node_config[:interfaces])
+            # Add interfaces
+            #vm = @compute_client.servers.find {|srv| srv.name == node_config[:nodename]}
+            vm = add_interfaces(vm, node_config[:interfaces])
+            #binding.pry
 
             ## Add disks
             #vm = add_disks(vm, node_config[:disks], disk_db)
@@ -59,33 +61,13 @@ module Dopv
 
             ## Reload the node
             #vm.reload
-          #rescue Exception => e
-          #  destroy_vm(vm, disk_db)
-          #  raise Errors::ProviderError, "Vsphere: Node #{node_config[:nodename]}: #{e}"
-          #end
+          rescue Exception => e
+            destroy_vm(vm, disk_db)
+            raise Errors::ProviderError, "Vsphere: Node #{node_config[:nodename]}: #{e}"
+          end
         end
 
         private
-
-        #def get_endpoint_ca_cert(url)
-        #  uri = URI.parse(url)
-        #  local_ca_file  = "/tmp/#{uri.hostname}_#{uri.port}_ca.crt"
-        #  remote_ca_file = "#{uri.scheme}://#{uri.host}:#{uri.port}/ca.crt"
-        #  local_ca = remote_ca = nil
-        #  unless File.exists?(local_ca_file)
-        #    begin
-        #      remote_ca = open(remote_ca_file, :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE)
-        #      local_ca  = open(local_ca_file, 'w')
-        #      local_ca.write(remote_ca.read)
-        #    rescue
-        #      raise Errors::ProviderError, "#{__method__} #{uri}: Cannot download CA certificate"
-        #    ensure
-        #      remote_ca.close if remote_ca
-        #      local_ca.close if local_ca
-        #    end
-        #  end
-        #  local_ca_file
-        #end
 
         def create_compute_client(attrs)
           Dopv::log.info("Provider: Vsphere: Node #{attrs[:nodename]}: #{__method__}: Creating compute client.")
@@ -120,38 +102,22 @@ module Dopv
         def create_vm(attrs)
           Dopv::log.info("Provider: Vsphere: Node #{attrs[:nodename]}: #{__method__}: Trying to create VM.")
 
-          #begin
-
+          begin
             vm = @compute_client.vm_clone(
               'name'          => attrs[:nodename],
               'datacenter'    => attrs[:datacenter],
-              #'template_path' => "%s/%s" % [tpl.path.split("#{dc.name}/").last, tpl.name],
               'template_path' => attrs[:image],
-              'linked_clone'  => true,
+              'numCPUs'       => FLAVOR[attrs[:flavor].to_sym][:cores],
+              'memoryMB'      => FLAVOR[attrs[:flavor].to_sym][:memory] / (1024 * 1024),
+              #'linked_clone'  => true,
               'power_on'      => false,
               'wait'          => true,
-                
-
-              #:template     => get_template_id(attrs[:image]),
-              #:cores        => FLAVOR[attrs[:flavor].to_sym][:cores],
-              #:memory       => FLAVOR[attrs[:flavor].to_sym][:memory],
-              #:storage      => FLAVOR[attrs[:flavor].to_sym][:storage],
-              #:cluster      => get_cluster_id(attrs[:cluster]),
-              #:ha           => attrs[:keep_ha].nil? ? true: attrs[:keep_ha]
             )
-            
-            # Wait until all locks are released
-            #vm.wait_for { !locked? }
-          #rescue Exception => e
-          #  raise Errors::ProviderError, "#{__method__}: #{e}"
-          #end
-          #vm
-        end
+          rescue Exception => e
+            raise Errors::ProviderError, "#{__method__}: #{e}"
+          end
 
-        def get_cluster_id(cluster_name)
-          cluster =  @compute_client.list_clusters.find { |cl| cl[:name] == cluster_name }
-          raise Errors::ProviderError, "#{__method__} #{cluster_name}: No such cluster" unless cluster
-          cluster[:id]
+          vm
         end
 
         def get_storage_domain_id(storage_domain_name)
@@ -172,32 +138,19 @@ module Dopv
           affinity_group.id
         end
         
-        def add_interfaces(vm, interfaces)
+        def add_interfaces(vm, interfaces_config)
           Dopv::log.info("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to add interfaces.")
           # Remove all interfaces defined by the template
           Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Removing interfaces defined by template.")
-          vm.interfaces.each do |nic|
-            vm.destroy_interface(:id => nic.id)
-            vm.wait_for { !locked? }
-          end
-
-          # Create network interfaces. In this step, interfaces are not assigned. This step
-          # is used for MAC addresses reservation
-          (1..interfaces.size).each do |idx|
-            nicname = "tmp%d" % idx
-            Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating interface #{nicname}.")
-            vm.add_interface(:name => nicname, :network_name => 'rhevm', :plugged => true, :linked => true)
-            vm.wait_for { !locked? }
-          end
-
-          # Rearrange interfaces by their MAC addresses and assign them into
-          # appropriate networks
-          interfaces.reverse!
-          vm.interfaces.reload.sort_by do |nic| nic.mac
-            config = interfaces.pop
-            Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Configuring interface #{nic.name} (#{nic.mac}) as #{config[:name]} in #{config[:network]}.")
-            vm.update_interface(:id => nic.id, :name => config[:name], :network_name => config[:network])
-            vm.wait_for { !locked? }
+          vm.interfaces.each(&:destroy)
+          # Create interfaces from scratch
+          interfaces_config.each do |config|
+            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Creating interface #{config[:name]} in #{config[:network]}.")
+            vm.interfaces.create(
+              :name     => config[:name],
+              :network  => config[:network],
+              :type     => 'VirtualVmxnet3'
+            )
           end
 
           # Explicitly reload nics & return VM
