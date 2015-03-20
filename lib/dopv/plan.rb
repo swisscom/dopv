@@ -56,7 +56,7 @@ module Dopv
               interface[:ip_gateway] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
             end
           end
-          interface[:set_gateway] = v['set_gateway'] if v['set_gateway']
+          interface[:set_gateway] = v['set_gateway'] == false ? v['set_gateway'] : true
           (node[:interfaces] ||= []) << interface
         end
         # Add affinity groups

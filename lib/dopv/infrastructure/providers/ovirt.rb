@@ -19,16 +19,23 @@ module Dopv
           cloud_init[:password] = (node_config[:credentials][:root_password] rescue nil)
           cloud_init[:ssh_authorized_keys] = (node_config[:credentials][:root_ssh_keys] rescue nil)
 
-          node_config[:interfaces].each do |nic|
-            if nic[:ip_address]
-              cloud_init[:nicname] = nic[:name]
-              cloud_init[:ip]      = nic[:ip_address]
-              if nic[:ip_address] != 'dhcp'
-                cloud_init[:netmask]  = nic[:ip_netmask]
-                cloud_init[:gateway]  = nic[:ip_gateway]
+          nics = []
+          node_config[:interfaces].each do |nic_config|
+            nic = {}
+            if nic_config[:ip_address]
+              nic[:nicname] = nic_config[:name]
+              nic[:ip]      = nic_config[:ip_address]
+              if nic_config[:ip_address] != 'dhcp'
+                nic[:netmask] = nic_config[:ip_netmask]
+                nic[:gateway] = nic_config[:ip_gateway] if nic_config[:set_gateway]
               end
             end
+            nics << nic
           end
+          # Current implementation of cloud-init in rbovirt does not support
+          # DHCP, nor multiple interfaces, hence the first interface for which
+          # a static IP is defined is passed.
+          cloud_init.merge!(nics[0]) if nics[0].is_a?(Hash)
           
           begin
             # Try to get the datacenter ID first.
