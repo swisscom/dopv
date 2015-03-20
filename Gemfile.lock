@@ -1,7 +1,16 @@
 GIT
-  remote: https://github.com/pdilung/fog.git
-  revision: 5ebb4b2c29ab55389d4ed42d30c6a6af2a4c4917
-  branch: wipe_disk_after_delete
+  remote: https://github.com/abenari/rbovirt.git
+  revision: b6b185a42c6ac8b4a9a8857bc160a4d9e44fe206
+  ref: b6b185a42c6ac8b4a9a8857bc160a4d9e44fe206
+  specs:
+    rbovirt (0.1.0)
+      nokogiri
+      rest-client (> 1.7.0)
+
+GIT
+  remote: https://github.com/fog/fog.git
+  revision: 5256636398762acd656b9f277b95e508a0503b6d
+  ref: 5256636398762acd656b9f277b95e508a0503b6d
   specs:
     fog (1.28.0)
       fog-atmos
@@ -11,6 +20,7 @@ GIT
       fog-ecloud
       fog-json
       fog-local
+      fog-powerdns (>= 0.1.1)
       fog-profitbricks
       fog-radosgw (>= 0.0.2)
       fog-riakcs
@@ -24,15 +34,6 @@ GIT
       fog-xml (~> 0.1.1)
       ipaddress (~> 0.5)
       nokogiri (~> 1.5, >= 1.5.11)
-
-GIT
-  remote: https://github.com/pdilung/rbovirt.git
-  revision: da584d592d2b30724f6c2ef442e9da2db348a9b4
-  branch: wipe_disk_after_delete
-  specs:
-    rbovirt (0.1.0)
-      nokogiri
-      rest-client (> 1.7.0)
 
 PATH
   remote: .
@@ -48,7 +49,7 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    CFPropertyList (2.3.0)
+    CFPropertyList (2.3.1)
     builder (3.2.2)
     coderay (1.1.0)
     colorize (0.7.5)
@@ -89,6 +90,10 @@ GEM
       multi_json (~> 1.0)
     fog-local (0.1.0)
       fog-core (~> 1.27)
+    fog-powerdns (0.1.1)
+      fog-core (~> 1.27)
+      fog-json (~> 1.0)
+      fog-xml (~> 0.1)
     fog-profitbricks (0.0.1)
       fog-core
       fog-xml
