@@ -5,6 +5,31 @@ require 'pry-debugger'
 module Dopv
   module Infrastructure
     module Vsphere
+      # Based on
+      # http://pubs.vmware.com/vsphere-50/index.jsp?topic=/com.vmware.wssdk.apiref.doc_50/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
+      GUEST_ID_TO_OS_FAMILY = {
+        :debian6_64Guest        => :linux,
+        :debian6_Guest          => :linux,
+        :rhel4_64Guest          => :linux,
+        :rhel4Guest             => :linux,
+        :rhel5_64Guest          => :linux,
+        :rhel5Guest             => :linux,
+        :rhel6_64Guest          => :linux,
+        :rhel6Guest             => :linux,
+        :rhel7_64Guest          => :linux,
+        :rhel7Guest             => :linux,
+        :oracleLinux64Guest     => :linux,
+        :oracleLinuxGuest       => :linux,
+        :ubuntu64Guest          => :linux,
+        :ubuntuGuest            => :linux,
+        :windows7_64Guest       => :windows,
+        :windows7Guest          => :windows,
+        :windows7Server64Guest  => :windows,
+        :windows8_64Guest       => :windows,
+        :windows8Guest          => :windows,
+        :windows8Server64Guest  => :windows
+      }
+
       class Node < BaseNode
         def initialize(node_config, disk_db)
           @compute_client = nil
@@ -12,20 +37,6 @@ module Dopv
           
           Dopv::log.info("Provider: Vsphere: Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
 
-          cloud_init = { :hostname => node_config[:nodename], :user => 'root' }
-
-          cloud_init[:password] = (node_config[:credentials][:root_password] rescue nil)
-          cloud_init[:ssh_authorized_keys] = (node_config[:credentials][:root_ssh_keys] rescue nil)
-
-          node_config[:interfaces].each do |nic|
-            if nic[:cloudinit] == true && nic[:ipaddress] != 'dhcp'
-              cloud_init[:nicname]  = nic[:name]
-              cloud_init[:ip]       = nic[:ip_address]
-              cloud_init[:netmask]  = nic[:ip_netmask]
-              cloud_init[:gateway]  = nic[:ip_gateway]
-            end
-          end
-          
           begin
             # Try to get the datacenter ID first.
             @compute_client = create_compute_client(
@@ -48,19 +59,18 @@ module Dopv
             # Add interfaces
             #vm = @compute_client.servers.find {|srv| srv.name == node_config[:nodename]}
             vm = add_interfaces(vm, node_config[:interfaces])
-            #binding.pry
 
-            ## Add disks
+            # Add disks
             #vm = add_disks(vm, node_config[:disks], disk_db)
 
-            ## Assign affinnity groups
+            # Assign affinnity groups
             #vm = assign_affinity_groups(vm, node_config[:affinity_groups])
-            #
-            ## Start a node with cloudinit
+
+            # Start a node with cloudinit
             #vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
 
-            ## Reload the node
-            #vm.reload
+            # Reload the node
+            vm.reload
           rescue Exception => e
             destroy_vm(vm, disk_db)
             raise Errors::ProviderError, "Vsphere: Node #{node_config[:nodename]}: #{e}"
@@ -109,7 +119,6 @@ module Dopv
               'template_path' => attrs[:image],
               'numCPUs'       => FLAVOR[attrs[:flavor].to_sym][:cores],
               'memoryMB'      => FLAVOR[attrs[:flavor].to_sym][:memory] / (1024 * 1024),
-              #'linked_clone'  => true,
               'power_on'      => false,
               'wait'          => true,
             )
@@ -117,7 +126,7 @@ module Dopv
             raise Errors::ProviderError, "#{__method__}: #{e}"
           end
 
-          vm
+          @compute_client.servers.get(vm['new_vm']['id'])
         end
 
         def get_storage_domain_id(storage_domain_name)
@@ -145,7 +154,7 @@ module Dopv
           vm.interfaces.each(&:destroy)
           # Create interfaces from scratch
           interfaces_config.each do |config|
-            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Creating interface #{config[:name]} in #{config[:network]}.")
+            Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating interface #{config[:name]} in #{config[:network]}.")
             vm.interfaces.create(
               :name     => config[:name],
               :network  => config[:network],
@@ -242,6 +251,56 @@ module Dopv
             end
           end
           vm
+        end
+
+        def customize(instance, settings)
+          nics = []
+
+          # Settings related to each NIC
+          settings[:interfaces].each do |nic|
+            ip_settings = RbVmomi::VIM::CustomizationIPSettings.new
+            if nic[:ip_address] == 'dhcp'
+              ip_settings.ip = RbVmomi::VIM::CustomizationDhcpIpGenerator.new
+            else
+              ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp('ipAddress' => nic[:ip_address])
+              ip_settings.subnetMask = nic[:ip_netmask]
+              ip_settings.gateway = [nic[:ip_gateway]] if nic[:set_gateway]
+            end
+            nics << ip_settings
+          end
+
+          # Global network settings
+          global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new
+          global_ip_settings.dnsServerList = (settings[:dns][:nameserver] rescue nil)
+          global_ip_settings.dnsSuffixList = ([settings[:dns][:domain]] rescue nil)
+
+          # Adapters mapping
+          nic_setting_map = nics.collect { |nic| RbVmomi::VIM::CustomizationAdapterMapping.new('adapter' => nic)}
+
+          # Identity settings
+          fqdn = settings[:fqdn] || settings[:nodename]
+          hostname = fqdn.split('.').first
+          domainname = fqdn.gsub(/^[^.]+\./, '')
+
+          identity_settings = case GUEST_ID_TO_OS_FAMILY[instance.guest_id.to_sym]
+                              when :linux
+                                RbVmomi::VIM::CustomizationLinuxPrep.new(
+                                  :domain   => domainname,
+                                  :hostName => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname)
+                                )
+                              when :windows
+                                #RbVmomi::VIM::CustomizationSysprep.new(
+                                #)
+                                raise Errors::ProviderError, "#{__method__} #{instance.name}: Windows guests are currently unsupported"
+                              else
+                                raise Errors::ProviderError, "#{__method__} #{instance.name}: Unsupported guest type"
+                              end
+
+          RbVmomi::VIM::CustomizationSpec.new(
+            :identity => identity_settings,
+            :globalIPSettings => global_ip_settings,
+            :nicSettingMap => nic_setting_map
+          )
         end
       end
     end
