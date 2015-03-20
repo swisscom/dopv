@@ -56,6 +56,7 @@ module Dopv
               interface[:ip_gateway] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
             end
           end
+          interface[:set_gateway] = v['set_gateway'] == false ? v['set_gateway'] : true
           (node[:interfaces] ||= []) << interface
         end
         # Add affinity groups
@@ -169,6 +170,9 @@ module Dopv
               ip_defgw  = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_defgw'] || '0.0.0.0')
               if ip < ip_from || ip > ip_to || ip == ip_defgw
                 raise Errors::PlanError, error_msg 
+              end
+              if v['set_gateway'] && (v['set_gateway'] != true && v['set_gateway'] != false)
+                raise Errors::PlanError, error_msg
               end
             rescue
               raise Errors::PlanError, error_msg
