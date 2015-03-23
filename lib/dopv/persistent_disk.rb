@@ -73,7 +73,7 @@ module Dopv
         nil
       end
 
-      def find_all
+      def select 
         disks = []
         each {|disk| disks << disk if yield(disk)}
         disks
