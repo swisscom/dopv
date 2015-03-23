@@ -47,6 +47,9 @@ module Dopv
               :datacenter   => node_config[:datacenter],
               :nodename     => node_config[:nodename]
             )
+            
+            vm = @compute_client.servers.find {|srv| srv.name == node_config[:nodename]}
+            binding.pry
 
             if exist?(node_config[:nodename])
               Dopv::log.warn("Provider: Vsphere: Node #{node_config[:nodename]}: #{__method__}: Already exists, skipping.")
@@ -98,7 +101,7 @@ module Dopv
           if vm
             Dopv::log.warn("Provider: Vsphere: Node #{vm.name}: #{__method__}: An error occured, rolling back.")
             vm.wait_for { !locked? }
-            disks = disk_db.find_all {|disk| disk.node == vm.name}
+            disks = disk_db.select {|disk| disk.node == vm.name}
             disks.each do |disk|
               Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to detaching disk #{disk.name}.")
               vm.detach_volume(:id => disk.id) rescue nil
@@ -184,32 +187,26 @@ module Dopv
           Dopv::log.info("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to add disks.")
               
           Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Loading persistent disks DB.")
-          persistent_disks = disk_db.find_all {|pd| pd.node == vm.name}
+          persistent_disks = disk_db.select { |pd| pd.node == vm.name }
           
           # Check if persistent disks DB is consistent
           Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Checking DB integrity.")
           persistent_disks.each do |pd|
             # Disk exists in state DB but not in plan
-            unless config_disks.find {|cd| pd.name == cd[:name]}
+            unless config_disks.find { |cd| pd.name == cd[:name] }
               err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} exists in DB but not in plan"
               raise Errors::ProviderError, err_msg
             end
             # Disk exists in state DB but not on the server side
-            unless @compute_client.volumes.find{|vol| pd.id == vol.id}
-              err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} does not exist on the server side"
-              raise Errors::ProviderError, err_msg
-            end
-            # Disk exists in state DB as well as on server side, however storage
-            # pools do not match,
-            unless @compute_client.volumes.find{|vol| pd.id == vol.id && pd.pool == vol.storage_domain}
-              err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} is in a different storage pool on the server side"
-              raise Errors::ProviderError, err_msg
-            end
+            #unless find_volume(pd.id)
+            #  err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} does not exist on the server side"
+            #  raise Errors::ProviderError, err_msg
+            #end
           end
           config_disks.each do |cd|
             # Disk exists in a plan but it is not recorded in the state DB for a
             # given node
-            if !persistent_disks.empty? && !persistent_disks.find {|pd| cd[:name] == pd.name}
+            if !persistent_disks.empty? && !persistent_disks.find { |pd| cd[:name] == pd.name }
               err_msg = "#{__method__}: Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
               raise Errors::ProviderError, err_msg
             end
@@ -218,34 +215,35 @@ module Dopv
           # Attach all persistent disks
           persistent_disks.each do |pd|
             Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Attaching disk #{pd.name} [#{pd.id}].")
-            vm.attach_volume(:id => pd.id)
-            vm.wait_for { !locked? }
+            begin
+              attach_volume(vm, pd.id, find_volume(pd.id).fileSize)
+            rescue
+              err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} does not exist on the server side"
+              raise Errors::ProviderError, err_msg
+            end
           end
 
           # Create those disks that do not exist in peristent disks DB and
           # record them into DB
           config_disks.each do |cd|
-            unless vm.volumes.find {|vol| vol.alias == cd[:name]}
+            unless persistent_disks.find { |pd| pd.name == cd[:name] }
               Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating disk #{cd[:name]} [#{cd[:size]}].")
-              size = case cd[:size]
-                     when /[1-9]*[Mm]/
-                       (cd[:size].split(/[Mm]/)[0].to_f*1024*1024).to_i
-                     when /[1-9]*[Gg]/
-                       (cd[:size].split(/[Gg]/)[0].to_f*1024*1024*1024).to_i
-                     when /[1-9]*[Tt]/
-                       (cd[:size].split(/[Tt]/)[0].to_f*1024*1024*1024*1024).to_i
-                     end
-              storage_domain = get_storage_domain_id(cd[:pool])
-              vm.add_volume( :storage_domain => storage_domain, :size => size, :bootable => 'false', :alias => cd[:name])
-              vm.wait_for { !locked? }
+              size_kb = case cd[:size]
+                        when /[1-9]*[Mm]/
+                          (cd[:size].split(/[Mm]/)[0].to_f*1024).to_i
+                        when /[1-9]*[Gg]/
+                          (cd[:size].split(/[Gg]/)[0].to_f*1024*1024).to_i
+                        when /[1-9]*[Tt]/
+                          (cd[:size].split(/[Tt]/)[0].to_f*1024*1024*1024).to_i
+                        end
+              volume = vm.volumes.create(:datastore => cd[:pool], :size => size_kb, :mode => 'persistent', :thin => true)
               # Record volume to a persistent disks database
               Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Recording disk #{cd[:name]} into DB.")
-              disk = vm.volumes.find {|vol| vol.alias == cd[:name]}
               disk_db << {
                 :node => vm.name,
-                :name => disk.alias,
-                :id   => disk.id,
-                :pool => disk.storage_domain,
+                :name => cd[:name],
+                :id   => disk.filename,
+                :pool => disk.datastore,
                 :size => disk.size
               }
             end
@@ -301,6 +299,73 @@ module Dopv
             :globalIPSettings => global_ip_settings,
             :nicSettingMap => nic_setting_map
           )
+        end
+
+        def attach_disk(instance, datastore, file, size)
+          backing_info = RbVmomi::VIM::VirtualDiskFlatVer2BackingInfo.new(
+            :datastore  => datastore,
+            :fileName   => file,
+            :diskMode   => 'persistent'
+          )
+
+          unit_number = instance.volumes.collect { |v| v.unit_number }.max + 1
+          virtual_disk = RbVmomi::VIM::VirtualDisk.new(
+            :controllerKey  => instance.scsi_controller.key,
+            #:unitNumber     => unit_number,
+            :key            => -1,
+            :backing        => backing_info,
+            :capacityInKB   => size
+          )
+
+          device_spec = RbVmomi::VIM::VirtualDeviceConfigSpec.new(
+            :operation  => :add,
+            :device     => virtual_disk
+          )
+
+          vm_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
+
+          vm_ref = @compute_client.send(:get_vm_ref, instance.id)
+          vm_ref.ReconfigVM_Task(:spec => vm_spec).wait_for_completion
+        end
+
+        def find_vmdk(instance, volume_id)
+          
+          disk_flags = RbVmomi::VIM::VmDiskFileQueryFlags.new(
+            :capacityKb       => true,
+            :diskType         => true,
+            :thin             => false,
+            :hardwareVersion  => false
+          )
+
+          detail_query = RbVmomi::VIM::FileQueryFlags.new(
+            :fileOwner      => false,
+            :fileSize       => true,
+            :fileType       => true,
+            :modification   => false
+          )
+
+          disk_query = RbVmomi::VIM::VmDiskFileQuery.new(:details => disk_flags)
+
+          search_spec = RbVmomi::VIM::HostDatastoreBrowserSearchSpec.new(
+            :query => [disk_query],
+            :details => detail_query
+          )
+
+
+          raw_datastore =  @compute_client.raw_datastores(instance.datacenter).find { |ds| ds.name == datastore }
+          browser = raw_datastore.browser
+
+
+          @search_results ||= raw_datastore.browser.SearchDatastoreSubFolders_Task(
+            :datastorePath  => filename,
+            :searchSpec     => search_spec
+          ).wait_for_completion
+
+
+          #result = @search_results.find { |res| res.file.find { |file| file.path == filename }}
+          #vm_file_info = result.file.find { |path| file.path == filename }
+          #Hash.new(
+          #  :size => 
         end
       end
     end
