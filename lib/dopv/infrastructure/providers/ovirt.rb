@@ -128,7 +128,7 @@ module Dopv
           if vm
             Dopv::log.warn("Provider: Ovirt: Node #{vm.name}: #{__method__}: An error occured, rolling back.")
             vm.wait_for { !locked? }
-            disks = disk_db.find_all {|disk| disk.node == vm.name}
+            disks = disk_db.select {|disk| disk.node == vm.name}
             disks.each do |disk|
               Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to detaching disk #{disk.name}.")
               vm.detach_volume(:id => disk.id) rescue nil
@@ -234,18 +234,18 @@ module Dopv
           Dopv::log.info("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to add disks.")
               
           Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Loading persistent disks DB.")
-          persistent_disks = disk_db.find_all {|pd| pd.node == vm.name}
+          persistent_disks = disk_db.select { |pd| pd.node == vm.name }
           
           # Check if persistent disks DB is consistent
           Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Checking DB integrity.")
           persistent_disks.each do |pd|
             # Disk exists in state DB but not in plan
-            unless config_disks.find {|cd| pd.name == cd[:name]}
+            unless config_disks.find { |cd| pd.name == cd[:name] }
               err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} exists in DB but not in plan"
               raise Errors::ProviderError, err_msg
             end
             # Disk exists in state DB but not on the server side
-            unless @compute_client.volumes.find{|vol| pd.id == vol.id}
+            unless @compute_client.volumes.find { |vol| pd.id == vol.id }
               err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} does not exist on the server side"
               raise Errors::ProviderError, err_msg
             end
@@ -259,7 +259,7 @@ module Dopv
           config_disks.each do |cd|
             # Disk exists in a plan but it is not recorded in the state DB for a
             # given node
-            if !persistent_disks.empty? && !persistent_disks.find {|pd| cd[:name] == pd.name}
+            if !persistent_disks.empty? && !persistent_disks.find { |pd| cd[:name] == pd.name }
               err_msg = "#{__method__}: Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
               raise Errors::ProviderError, err_msg
             end
@@ -275,7 +275,7 @@ module Dopv
           # Create those disks that do not exist in peristent disks DB and
           # record them into DB
           config_disks.each do |cd|
-            unless vm.volumes.find {|vol| vol.alias == cd[:name]}
+            unless vm.volumes.find { |vol| vol.alias == cd[:name] }
               Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Creating disk #{cd[:name]} [#{cd[:size]}].")
               size = case cd[:size]
                      when /[1-9]*[Mm]/
@@ -286,7 +286,13 @@ module Dopv
                        (cd[:size].split(/[Tt]/)[0].to_f*1024*1024*1024*1024).to_i
                      end
               storage_domain = get_storage_domain_id(cd[:pool])
-              vm.add_volume(:storage_domain => storage_domain, :size => size, :bootable => false, :alias => cd[:name], :wipe_after_delete => true)
+              vm.add_volume(
+                :storage_domain => storage_domain,
+                :size => size,
+                :bootable => 'false',
+                :alias => cd[:name],
+                :wipe_after_delete => 'true'
+              )
               vm.wait_for { !locked? }
               # Record volume to a persistent disks database
               Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Recording disk #{cd[:name]} into DB.")
