@@ -1,13 +1,4 @@
 GIT
-  remote: https://github.com/abenari/rbovirt.git
-  revision: b6b185a42c6ac8b4a9a8857bc160a4d9e44fe206
-  ref: b6b185a42c6ac8b4a9a8857bc160a4d9e44fe206
-  specs:
-    rbovirt (0.1.0)
-      nokogiri
-      rest-client (> 1.7.0)
-
-GIT
   remote: https://github.com/fog/fog.git
   revision: 5256636398762acd656b9f277b95e508a0503b6d
   ref: 5256636398762acd656b9f277b95e508a0503b6d
@@ -34,6 +25,15 @@ GIT
       fog-xml (~> 0.1.1)
       ipaddress (~> 0.5)
       nokogiri (~> 1.5, >= 1.5.11)
+
+GIT
+  remote: https://github.com/pdilung/rbovirt.git
+  revision: fa40b3b52684d9886d47b3fb8bb7ef413b60c320
+  branch: full_clone
+  specs:
+    rbovirt (0.1.0)
+      nokogiri
+      rest-client (> 1.7.0)
 
 PATH
   remote: .
