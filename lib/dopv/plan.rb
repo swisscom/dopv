@@ -36,13 +36,14 @@ module Dopv
         node[:provider_apikey]    = infrastructures[d['infrastructure']]['credentials']['apikey']
         node[:provider_endpoint]  = infrastructures[d['infrastructure']]['endpoint']
         # Node definitions
-        node[:nodename] = n
-        node[:fqdn]     = d['fqdn']
-        node[:image]    = d['image']
-        node[:flavor]   = d['flavor'] if d['flavor']
+        node[:nodename]   = n
+        node[:fqdn]       = d['fqdn']
+        node[:image]      = d['image']
+        node[:flavor]     = d['flavor'] if d['flavor']
         node[:cores]      = d['cores'] if d['cores']
-        node[:memory]   = d['memory'] if d['memory']
-        node[:storage]   = d['storage'] if d['storage']
+        node[:memory]     = d['memory'] if d['memory']
+        node[:storage]    = d['storage'] if d['storage']
+        node[:full_clone] = d['full_clone'] unless d['full_clone'].nil?
         # Create an empty disks array
         node[:disks] = []
         # Add disks if any
@@ -133,6 +134,7 @@ module Dopv
              d['image'].is_a?(String) && d['interfaces'].is_a?(Hash))
           raise Errors::PlanError, error_msg 
         end
+        raise Errors::PlanError, error_msg if d['full_clone'] && d['full_clone'] != true && d['full_clone'] != false
         # If flavor is defined, check if flavor it is a simple string.
         raise Errors::PlanError, error_msg if d['flavor'] && !d['flavor'].is_a?(String)
         # If cpu is defined, check if it is a simple integer number.
