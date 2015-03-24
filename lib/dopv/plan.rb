@@ -39,7 +39,10 @@ module Dopv
         node[:nodename] = n
         node[:fqdn]     = d['fqdn']
         node[:image]    = d['image']
-        node[:flavor]   = d['flavor']
+        node[:flavor]   = d['flavor'] if d['flavor']
+        node[:cores]      = d['cores'] if d['cores']
+        node[:memory]   = d['memory'] if d['memory']
+        node[:storage]   = d['storage'] if d['storage']
         # Create an empty disks array
         node[:disks] = []
         # Add disks if any
@@ -120,15 +123,27 @@ module Dopv
       # A node definition must be defined in nodes hash and it is be referenced
       # by its name.
       # The node definition itself must be of a Hash type and it must contain
-      # at least definitions of the infrastructure, image, network and flavor.
+      # at least definitions of the infrastructure, image, network.
       # Again, these must be of a certain type.
       # An infrastructure definition pointed to by node's 'infrastructure' key
       # must exist in infrastructures section of the @plan.
       @plan['nodes'].each do |n, d|
-        if !(d.is_a?(Hash) && d['infrastructure'].is_a?(String) && d['flavor'].is_a?(String) &&
+        error_msg = "#{__method__}: Node #{n}: Invalid node definition"
+        if !(d.is_a?(Hash) && d['infrastructure'].is_a?(String) &&
              d['image'].is_a?(String) && d['interfaces'].is_a?(Hash))
-          raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid node definition"
+          raise Errors::PlanError, error_msg 
         end
+        # If flavor is defined, check if flavor it is a simple string.
+        raise Errors::PlanError, error_msg if d['flavor'] && !d['flavor'].is_a?(String)
+        # If cpu is defined, check if it is a simple integer number.
+        raise Errors::PlanError, error_msg if d['cores'] && (!d['cores'].is_a?(Integer) || !(d['cores'] > 0))
+        # If memory is defined, check if it is a simple string of a certain
+        # format.
+        raise Errors::PlanError, error_msg if d['memory'] && d['memory'].to_s !~ /^\d+[\dmMgG]$/
+        # If memory is defined, check if it is a simple string of a certain
+        # format.
+        raise Errors::PlanError, error_msg if d['storage'] && d['storage'].to_s !~ /^\d+[\dmMgG]$/
+        
         raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid infrastructure pointer" unless @plan['infrastructures'].has_key?(d['infrastructure'])
         if d.has_key?('infrastructure_properties')
           error_msg = "#{__method__}: Node #{n}: Invalid infrastructure properties definition"
