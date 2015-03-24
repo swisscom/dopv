@@ -149,7 +149,8 @@ module Dopv
               :memory       => get_memory(attrs),
               :storage      => get_storage(attrs),
               :cluster      => get_cluster_id(attrs[:cluster]),
-              :ha           => attrs[:keep_ha].nil? ? true: attrs[:keep_ha]
+              :ha           => attrs[:keep_ha].nil? ? true : attrs[:keep_ha],
+              :clone        => attrs[:full_clone].nil? true : attrs[:full_clone]
             )
             
             # For each disk, set up wipe after delete flag
