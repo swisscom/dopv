@@ -145,9 +145,9 @@ module Dopv
             vm = @compute_client.servers.create(
               :name         => attrs[:nodename],
               :template     => get_template_id(attrs[:image]),
-              :cores        => FLAVOR[attrs[:flavor].to_sym][:cores],
-              :memory       => FLAVOR[attrs[:flavor].to_sym][:memory],
-              :storage      => FLAVOR[attrs[:flavor].to_sym][:storage],
+              :cores        => get_cores(attrs),
+              :memory       => get_memory(attrs),
+              :storage      => get_storage(attrs),
               :cluster      => get_cluster_id(attrs[:cluster]),
               :ha           => attrs[:keep_ha].nil? ? true: attrs[:keep_ha]
             )
