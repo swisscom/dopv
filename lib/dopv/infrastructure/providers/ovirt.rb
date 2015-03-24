@@ -149,17 +149,17 @@ module Dopv
               :memory       => get_memory(attrs),
               :storage      => get_storage(attrs),
               :cluster      => get_cluster_id(attrs[:cluster]),
-              :ha           => attrs[:keep_ha].nil? ? true : attrs[:keep_ha],
-              :clone        => attrs[:full_clone].nil? ? true : attrs[:full_clone]
+              :ha           => attrs[:keep_ha].nil? ? true: attrs[:keep_ha]
             )
-            vm.wait_for { !locked? }
             
             # For each disk, set up wipe after delete flag
             vm.volumes.each do |vol|
               Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Setting wipe after delete for disk #{vol.alias}.")
               vm.update_volume(:id => vol.id, :wipe_after_delete => true)
-              vm.wait_for { !locked? }
             end
+
+            # Wait until all locks are released
+            vm.wait_for { !locked? }
           rescue Exception => e
             raise Errors::ProviderError, "#{__method__}: #{e}"
           end
