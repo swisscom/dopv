@@ -68,7 +68,7 @@ module Dopv
 
       def get_size(attrs={})
         type = attrs[:type]
-        unit = attrs[:unit] || :bytes
+        unit = attrs[:unit] || :byte
 
         value = case attrs[type]
                 when /\d[Mm]/
@@ -89,11 +89,13 @@ module Dopv
         end
 
         case unit
-        when :gigbyte
+        when :gigabyte
           (value / GIGA_BYTE).to_i
         when :megabyte
           (value / MEGA_BYTE).to_i
-        else # Bytes
+        when :kilobyte
+          (value / KILO_BYTE).to_i
+        when :byte
           value
         end
       end
