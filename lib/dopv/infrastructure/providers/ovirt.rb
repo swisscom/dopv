@@ -304,6 +304,7 @@ module Dopv
                 :pool => disk.storage_domain,
                 :size => disk.size
               }
+              disk_db.save
             end
           end
           vm
