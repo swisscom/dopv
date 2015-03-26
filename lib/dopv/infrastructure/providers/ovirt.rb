@@ -130,7 +130,7 @@ module Dopv
             vm.wait_for { !locked? }
             disks = disk_db.select {|disk| disk.node == vm.name}
             disks.each do |disk|
-              Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to detaching disk #{disk.name}.")
+              Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to detach disk #{disk.name}.")
               vm.detach_volume(:id => disk.id) rescue nil
               vm.wait_for { !locked? }
             end
