@@ -75,7 +75,6 @@ module Dopv
 
     def execute
       @nodes.each { |node| Infrastructure::bootstrap(node, @disk_db) }
-      @disk_db.save
     end
 
     private
