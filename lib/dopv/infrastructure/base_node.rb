@@ -122,11 +122,11 @@ module Dopv
         cores
       end
 
-      def get_memory(attrs={}, unit=:bytes)
+      def get_memory(attrs={}, unit=:byte)
         get_size(attrs.merge(:type => :memory, :unit => unit))
       end
 
-      def get_storage(attrs={}, unit=:bytes)
+      def get_storage(attrs={}, unit=:byte)
         get_size(attrs.merge(:type => :storage, :unit => unit))
       end
     end
