@@ -34,7 +34,7 @@ module Dopv
         def initialize(node_config, disk_db)
           @compute_client = nil
           vm = nil
-          
+
           Dopv::log.info("Provider: Vsphere: Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
 
           begin
@@ -47,7 +47,7 @@ module Dopv
               :datacenter   => node_config[:datacenter],
               :nodename     => node_config[:nodename]
             )
-            
+
             if exist?(node_config[:nodename])
               Dopv::log.warn("Provider: Vsphere: Node #{node_config[:nodename]}: #{__method__}: Already exists, skipping.")
               return
@@ -126,9 +126,7 @@ module Dopv
         end
 
         def get_affinity_group_id(affinity_group_name)
-          affinity_group = @compute_client.affinity_groups.find {|ag| ag.name == affinity_group_name}
-          raise Errors::ProviderError, "#{__method__} #{affinity_group_name}: No such affinity group" unless affinity_group
-          affinity_group.id
+          raise Errors::ProviderError, "#{__method__}: Not implemented yet"
         end
         
         def add_interfaces(vm, interfaces_config)
@@ -149,15 +147,7 @@ module Dopv
         end
 
         def assign_affinity_groups(vm, affinity_groups)
-          Dopv::log.info("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to assign affinity groups.")
-          if affinity_groups
-            affinity_groups.each do |ag_name|
-              ag_id = get_affinity_group_id(ag_name)
-              Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Assigning affinity group #{ag_name}.")
-              vm.add_to_affinity_group(:id => ag_id)
-              vm.wait_for { !locked? }
-            end
-          end
+          raise Errors::ProviderError, "#{__method__}: Not implemented yet"
         end
 
         def add_disks(vm, config_disks, disk_db)
