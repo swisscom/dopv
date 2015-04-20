@@ -201,6 +201,7 @@ module Dopv
                 :pool => volume.datastore,
                 :size => volume.size*KILO_BYTE
               }
+              disk_db.save
             end
           end
         end
