@@ -114,7 +114,7 @@ module Dopv
               'datacenter'    => attrs[:datacenter],
               'template_path' => attrs[:image],
               'numCPUs'       => get_cores(attrs),
-              'memoryMB'      => get_memory(attrs.merge(:unit => :megabyte)),
+              'memoryMB'      => get_memory(attrs, :megabyte),
               'power_on'      => false,
               'wait'          => true,
             )
