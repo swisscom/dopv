@@ -128,7 +128,7 @@ module Dopv
         def get_affinity_group_id(affinity_group_name)
           raise Errors::ProviderError, "#{__method__}: Not implemented yet"
         end
-        
+
         def add_interfaces(vm, interfaces_config)
           Dopv::log.info("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to add interfaces.")
           # Remove all interfaces defined by the template
@@ -152,10 +152,10 @@ module Dopv
 
         def add_disks(vm, config_disks, disk_db)
           Dopv::log.info("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to add disks.")
-              
+
           Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Loading persistent disks DB.")
           persistent_disks = disk_db.select { |pd| pd.node == vm.name }
-          
+
           # Check if persistent disks DB is consistent
           Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Checking DB integrity.")
           persistent_disks.each do |pd|
