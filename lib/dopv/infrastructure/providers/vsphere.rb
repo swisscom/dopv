@@ -1,6 +1,5 @@
 require 'fog'
 require 'uri'
-require 'pry-debugger'
 
 module Dopv
   module Infrastructure
