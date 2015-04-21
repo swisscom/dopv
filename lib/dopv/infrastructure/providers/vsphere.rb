@@ -161,7 +161,7 @@ module Dopv
           persistent_disks.each do |pd|
             # Disk exists in state DB but not in plan
             unless config_disks.find { |cd| pd.name == cd[:name] }
-              err_msg = "#{__method__}: Disk #{pd.name} exists in DB but not in plan"
+              err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} exists in DB but not in plan"
               raise Errors::ProviderError, err_msg
             end
           end
@@ -169,7 +169,7 @@ module Dopv
             # Disk exists in a plan but it is not recorded in the state DB for a
             # given node
             if !persistent_disks.empty? && !persistent_disks.find { |pd| cd[:name] == pd.name }
-              err_msg = "#{__method__}: Disk #{cd[:name]} exists in plan but not in DB"
+              err_msg = "#{__method__}: Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
               raise Errors::ProviderError, err_msg
             end
           end
