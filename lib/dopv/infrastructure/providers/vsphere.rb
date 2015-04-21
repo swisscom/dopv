@@ -100,7 +100,7 @@ module Dopv
               end
             end
             Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Destroying VM.")
-            #vm.destroy
+            vm.destroy
           end
         end
 
