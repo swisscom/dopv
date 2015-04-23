@@ -263,7 +263,7 @@ module Dopv
                                     :computerName   => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname),
                                     :fullName       => (settings[:credentials][:administrator_fullname] rescue 'Administrator'),
                                     :orgName        => settings[:organization_name],
-                                    :productId      => settings[:product_key] || ''
+                                    :productId      => settings[:product_id] || ''
                                   )
                                 )
                               else

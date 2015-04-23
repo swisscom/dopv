@@ -44,7 +44,7 @@ module Dopv
         node[:memory]             = d['memory'] if d['memory']
         node[:storage]            = d['storage'] if d['storage']
         node[:full_clone]         = d['full_clone'] unless d['full_clone'].nil?
-        node[:product_key]        = d['product_key'] if d['product_key']
+        node[:product_id]        = d['product_id'] if d['product_id']
         node[:organization_name]  = d['organization_name'] if d['organization_name']
         node[:timezone]           = d['timezone'] if d['timezone']
         # Create an empty disks array
@@ -137,7 +137,7 @@ module Dopv
           raise Errors::PlanError, error_msg 
         end
         raise Errors::PlanError, error_msg if d['full_clone'] && d['full_clone'] != true && d['full_clone'] != false
-        raise Errors::PlanError, error_msg if d['product_key'] && !d['product_key'].is_a?(String)
+        raise Errors::PlanError, error_msg if d['product_id'] && !d['product_id'].is_a?(String)
         raise Errors::PlanError, error_msg if d['organization_name'] && !d['organization_name'].is_a?(String)
         raise Errors::PlanError, error_msg if d['timezone'] && d['timezone'].to_s !~ /^\d{3}$/
         # If flavor is defined, check if flavor it is a simple string.
