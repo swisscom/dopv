@@ -38,7 +38,7 @@ GIT
 PATH
   remote: .
   specs:
-    dopv (0.0.9)
+    dopv (0.0.10)
       colorize (~> 0.7.5)
       fog (~> 1.28.0)
       json (~> 1.8)
