@@ -36,14 +36,17 @@ module Dopv
         node[:provider_apikey]    = infrastructures[d['infrastructure']]['credentials']['apikey']
         node[:provider_endpoint]  = infrastructures[d['infrastructure']]['endpoint']
         # Node definitions
-        node[:nodename]   = n
-        node[:fqdn]       = d['fqdn']
-        node[:image]      = d['image']
-        node[:flavor]     = d['flavor'] if d['flavor']
-        node[:cores]      = d['cores'] if d['cores']
-        node[:memory]     = d['memory'] if d['memory']
-        node[:storage]    = d['storage'] if d['storage']
-        node[:full_clone] = d['full_clone'] unless d['full_clone'].nil?
+        node[:nodename]           = n
+        node[:fqdn]               = d['fqdn']
+        node[:image]              = d['image']
+        node[:flavor]             = d['flavor'] if d['flavor']
+        node[:cores]              = d['cores'] if d['cores']
+        node[:memory]             = d['memory'] if d['memory']
+        node[:storage]            = d['storage'] if d['storage']
+        node[:full_clone]         = d['full_clone'] unless d['full_clone'].nil?
+        node[:product_key]        = d['product_key'] if d['product_key']
+        node[:organization_name]  = d['organization_name'] if d['organization_name']
+        node[:timezone]           = d['timezone'] if d['timezone']
         # Create an empty disks array
         node[:disks] = []
         # Add disks if any
@@ -134,6 +137,9 @@ module Dopv
           raise Errors::PlanError, error_msg 
         end
         raise Errors::PlanError, error_msg if d['full_clone'] && d['full_clone'] != true && d['full_clone'] != false
+        raise Errors::PlanError, error_msg if d['product_key'] && !d['product_key'].is_a?(String)
+        raise Errors::PlanError, error_msg if d['organization_name'] && !d['organization_name'].is_a?(String)
+        raise Errors::PlanError, error_msg if d['timezone'] && d['timezone'].to_s !~ /^\d{3}$/
         # If flavor is defined, check if flavor it is a simple string.
         raise Errors::PlanError, error_msg if d['flavor'] && !d['flavor'].is_a?(String)
         # If cpu is defined, check if it is a simple integer number.
@@ -217,6 +223,12 @@ module Dopv
           end
           if d['credentials'].has_key?('root_ssh_keys') && !d['credentials']['root_ssh_keys'].is_a?(Array)
               raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid root ssh keys definition"
+          end
+          if d['credentials'].has_key?('administrator_fullname') && !d['credentials']['administrator_fullname'].is_a?(String)
+              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid administrator full name definition"
+          end
+          if d['credentials'].has_key?('administrator_password') && !d['credentials']['administrator_password'].is_a?(String)
+              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid administrator password definition"
           end
         end
         # DNS

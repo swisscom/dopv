@@ -241,18 +241,47 @@ module Dopv
                                   :hostName => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname)
                                 )
                               when :windows
-                                #RbVmomi::VIM::CustomizationSysprep.new(
-                                #)
-                                raise Errors::ProviderError, "#{__method__} #{instance.name}: Windows guests are currently unsupported"
+                                raise Errors::ProviderError, "#{__method__}: Missing required customization parameter: organization name" unless settings[:organization_name]
+                                password_settings = (RbVmomi::VIM::CustomizationPassword.new(
+                                  :plainText => true,
+                                  :value     => settings[:credentials][:administrator_password]
+                                ) rescue nil)
+                                RbVmomi::VIM::CustomizationSysprep.new(
+                                  :guiRunOnce     => nil,
+                                  :guiUnattended  => RbVmomi::VIM::CustomizationGuiUnattended.new(
+                                    :autoLogon      => false,
+                                    :autoLogonCount => 1,
+                                    :password       => password_settings,
+                                    :timeZone       => settings[:timezone] || '085'
+                                  ),
+                                  :identification => RbVmomi::VIM::CustomizationIdentification.new(
+                                    :domainAdmin          => nil,
+                                    :domainAdminPassword  => nil,
+                                    :joinDomain           => nil
+                                  ),
+                                  :userData       => RbVmomi::VIM::CustomizationUserData.new(
+                                    :computerName   => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname),
+                                    :fullName       => (settings[:credentials][:administrator_fullname] rescue 'Administrator'),
+                                    :orgName        => settings[:organization_name],
+                                    :productId      => settings[:product_key] || ''
+                                  )
+                                )
                               else
-                                raise Errors::ProviderError, "#{__method__} #{instance.name}: Unsupported guest type"
+                                raise Errors::ProviderError, "#{__method__}: Unsupported guest type"
                               end
 
-          RbVmomi::VIM::CustomizationSpec.new(
+          custom_spec = RbVmomi::VIM::CustomizationSpec.new(
             :identity => identity_settings,
             :globalIPSettings => global_ip_settings,
             :nicSettingMap => nic_setting_map
           )
+          custom_spec.options = RbVmomi::VIM::CustomizationWinOptions.new(
+            :changeSID      => true,
+            :deleteAccounts => false
+          ) if GUEST_ID_TO_OS_FAMILY[instance.guest_id.to_sym] == :windows
+
+          custom_spec
+
         end
 
         def attach_volume(instance, disk_entry)
