@@ -14,6 +14,8 @@ module Dopv
           Dopv::log.info("Provider: Ovirt: Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
 
           cloud_init[:hostname] = node_config[:fqdn] ? node_config[:fqdn] : node_config[:nodename]
+          cloud_init[:dns] = (node_config[:dns][:nameserver] rescue nil)
+          cloud_init[:domain] = (node_config[:dns][:domain] rescue nil)
 
           cloud_init[:user] = 'root'
           cloud_init[:password] = (node_config[:credentials][:root_password] rescue nil)
