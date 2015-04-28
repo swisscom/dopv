@@ -169,6 +169,9 @@ module Dopv
               end
             when 'affinity_groups'
               raise Errors::PlanError, error_msg unless v.is_a?(Array)
+            when 'dest_folder'
+              raise Errors::PlanError, error_msg unless v.is_a?(String)
+            when 'dest_folder'
             else
               raise Errors::PlanError, error_msg
             end

@@ -116,6 +116,7 @@ module Dopv
               'memoryMB'      => get_memory(attrs, :megabyte),
               'power_on'      => false,
               'wait'          => true,
+              'dest_folder'   => attrs[:dest_folder] || ""
             )
           rescue Exception => e
             raise Errors::ProviderError, "#{__method__}: #{e}"
