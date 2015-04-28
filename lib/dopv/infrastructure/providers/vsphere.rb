@@ -106,18 +106,19 @@ module Dopv
 
         def create_vm(attrs)
           Dopv::log.info("Provider: Vsphere: Node #{attrs[:nodename]}: #{__method__}: Trying to create VM.")
-
           begin
-            vm = @compute_client.vm_clone(
+            clone_attrs = {
               'name'          => attrs[:nodename],
               'datacenter'    => attrs[:datacenter],
               'template_path' => attrs[:image],
               'numCPUs'       => get_cores(attrs),
               'memoryMB'      => get_memory(attrs, :megabyte),
               'power_on'      => false,
-              'wait'          => true,
-              'dest_folder'   => attrs[:dest_folder] || ""
-            )
+              'wait'          => true
+            }
+            clone_attrs['dest_folder'] = attrs[:dest_folder] unless attrs[:dest_folder].nil?
+            clone_attrs['datastore']  = attrs[:default_pool] unless attrs[:default_pool].nil?
+            vm = @compute_client.vm_clone(clone_attrs)
           rescue Exception => e
             raise Errors::ProviderError, "#{__method__}: #{e}"
           end

@@ -50,7 +50,12 @@ module Dopv
         # Create an empty disks array
         node[:disks] = []
         # Add disks if any
-        d['disks'].each { |dsk| node[:disks] << Hash[dsk.map { |k, v| [k.to_sym, v] }] } if d['disks']
+        if d['disks']
+          d['disks'].each do |dsk|
+            dsk['pool'] = d['infrastructure_properties']['default_pool'] unless dsk['pool']
+            node[:disks] << Hash[dsk.map { |k, v| [k.to_sym, v] }]
+          end
+        end
         d['infrastructure_properties'].each { |k, v| node[k.to_sym] = v } if d['infrastructure_properties']
         d['interfaces'].each do |k, v|
           interface = {}
@@ -171,7 +176,8 @@ module Dopv
               raise Errors::PlanError, error_msg unless v.is_a?(Array)
             when 'dest_folder'
               raise Errors::PlanError, error_msg unless v.is_a?(String)
-            when 'dest_folder'
+            when 'default_pool'
+              raise Errors::PlanError, error_msg unless v.is_a?(String)
             else
               raise Errors::PlanError, error_msg
             end
@@ -210,8 +216,10 @@ module Dopv
           raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid disk definition" unless d['disks'].is_a?(Array)
           d['disks'].each do |dsk|
             if !dsk.is_a?(Hash) || !dsk['name'].is_a?(String) ||
-               !dsk['pool'].is_a?(String) || !dsk['size'].is_a?(String) || dsk['size'] !~ /[1-9]*[MGTmgt]/
-              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid disk name and/or size definition"
+               (!dsk['pool'].is_a?(String) &&
+                !d['infrastructure_properties']['default_pool'].is_a?(String)
+               ) || !dsk['size'].is_a?(String) || dsk['size'] !~ /[1-9]*[MGTmgt]/
+              raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid disk name, pool or size definition"
             end
           end
         end
