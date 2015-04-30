@@ -69,6 +69,7 @@ module Dopv
             end
           end
           interface[:set_gateway] = v['set_gateway'] == false ? v['set_gateway'] : true
+          interface[:virtual_switch] = v['virtual_switch'] if v['virtual_switch']
           (node[:interfaces] ||= []) << interface
         end
         # Add affinity groups
@@ -189,24 +190,27 @@ module Dopv
           if !v.is_a?(Hash) || !v['network'].is_a?(String)
             raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid interface definition"
           end
+          if v['virtual_switch'] && !v['virtual_switch'].is_a?(String)
+            raise Errors::PlanError,  "#{__method__}: Node #{n}: Invalid virtual switch definition"
+          end
           unless @plan['infrastructures'][d['infrastructure']]['networks'].has_key?(v['network'])
             raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid network pointer"
           end
-          if v['ip'] && v['ip'] != "dhcp"
+          if v['ip'] && (v['ip'] != "dhcp" || v['ip'] != "none")
             error_msg = "#{__method__}: Node #{n}: Invalid IP definition"
             begin
               ip = IPAddr.new(v['ip'])
               ip_from   = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['from'])
               ip_to     = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['to'])
               ip_defgw  = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_defgw'] || '0.0.0.0')
-              if ip < ip_from || ip > ip_to || ip == ip_defgw
-                raise Errors::PlanError, error_msg 
-              end
-              if v['set_gateway'] && (v['set_gateway'] != true && v['set_gateway'] != false)
-                raise Errors::PlanError, error_msg
-              end
             rescue
               raise Errors::PlanError, error_msg
+            end
+            if ip < ip_from || ip > ip_to || ip == ip_defgw
+              raise Errors::PlanError, error_msg
+            end
+            if v['set_gateway'] && (v['set_gateway'] != true && v['set_gateway'] != false)
+              raise Errors::PlanError, "#{__method__}: Node #{n}: set_gateway must be of boolean type"
             end
           end
         end

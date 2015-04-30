@@ -137,11 +137,15 @@ module Dopv
           vm.interfaces.each(&:destroy)
           # Create interfaces from scratch
           interfaces_config.each do |config|
-            Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating interface #{config[:name]} in #{config[:network]}.")
+            log_msg = config[:virtual_switch].nil? ?
+              "Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating interface #{config[:name]} in #{config[:network]}." :
+              "Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating interface #{config[:name]} in #{config[:network]} (#{config[:virtual_switch]})."
+            Dopv::log.debug(log_msg)
             vm.interfaces.create(
-              :name     => config[:name],
-              :network  => config[:network],
-              :type     => 'VirtualVmxnet3'
+              :name           => config[:name],
+              :network        => config[:network],
+              :virtualswitch  => config[:virtual_switch],
+              :type           => 'VirtualVmxnet3'
             )
           end
           vm.interfaces.reload
