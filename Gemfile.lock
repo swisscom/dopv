@@ -1,9 +1,44 @@
 GIT
-  remote: https://github.com/fog/fog.git
-  revision: 5256636398762acd656b9f277b95e508a0503b6d
-  ref: 5256636398762acd656b9f277b95e508a0503b6d
+  remote: https://github.com/abenari/rbovirt.git
+  revision: f4ff2b8daf893bb49769d3d72fb3d309fbada39c
+  ref: f4ff2b8daf893bb49769d3d72fb3d309fbada39c
   specs:
-    fog (1.28.0)
+    rbovirt (0.1.0)
+      nokogiri
+      rest-client (> 1.7.0)
+
+PATH
+  remote: .
+  specs:
+    dopv (0.0.13)
+      colorize (~> 0.7.5)
+      fog (~> 1.29.0)
+      json (~> 1.8)
+      rbovirt (~> 0.1.0)
+      rbvmomi (~> 1.8.2)
+      rest-client (~> 1.7)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    CFPropertyList (2.3.1)
+    builder (3.2.2)
+    coderay (1.1.0)
+    colorize (0.7.7)
+    columnize (0.9.0)
+    debugger (1.6.8)
+      columnize (>= 0.3.1)
+      debugger-linecache (~> 1.2.0)
+      debugger-ruby_core_source (~> 1.3.5)
+    debugger-linecache (1.2.0)
+    debugger-ruby_core_source (1.3.8)
+    diff-lcs (1.2.5)
+    domain_name (0.5.24)
+      unf (>= 0.0.5, < 1.0.0)
+    excon (0.45.3)
+    fission (0.5.0)
+      CFPropertyList (~> 2.2)
+    fog (1.29.0)
       fog-atmos
       fog-aws (~> 0.0)
       fog-brightbox (~> 0.4)
@@ -25,49 +60,10 @@ GIT
       fog-xml (~> 0.1.1)
       ipaddress (~> 0.5)
       nokogiri (~> 1.5, >= 1.5.11)
-
-GIT
-  remote: https://github.com/pdilung/rbovirt.git
-  revision: fa40b3b52684d9886d47b3fb8bb7ef413b60c320
-  branch: full_clone
-  specs:
-    rbovirt (0.1.0)
-      nokogiri
-      rest-client (> 1.7.0)
-
-PATH
-  remote: .
-  specs:
-    dopv (0.0.12)
-      colorize (~> 0.7.5)
-      fog (~> 1.28.0)
-      json (~> 1.8)
-      rbovirt (~> 0.1.0)
-      rbvmomi (~> 1.8.2)
-      rest-client (~> 1.7)
-
-GEM
-  remote: https://rubygems.org/
-  specs:
-    CFPropertyList (2.3.1)
-    builder (3.2.2)
-    coderay (1.1.0)
-    colorize (0.7.5)
-    columnize (0.9.0)
-    debugger (1.6.8)
-      columnize (>= 0.3.1)
-      debugger-linecache (~> 1.2.0)
-      debugger-ruby_core_source (~> 1.3.5)
-    debugger-linecache (1.2.0)
-    debugger-ruby_core_source (1.3.8)
-    diff-lcs (1.2.5)
-    excon (0.44.4)
-    fission (0.5.0)
-      CFPropertyList (~> 2.2)
     fog-atmos (0.1.0)
       fog-core
       fog-xml
-    fog-aws (0.1.1)
+    fog-aws (0.1.2)
       fog-core (~> 1.27)
       fog-json (~> 1.0)
       fog-xml (~> 0.1)
@@ -76,29 +72,30 @@ GEM
       fog-core (~> 1.22)
       fog-json
       inflecto (~> 0.0.2)
-    fog-core (1.29.0)
+    fog-core (1.30.0)
       builder
-      excon (~> 0.38)
+      excon (~> 0.45)
       formatador (~> 0.2)
       mime-types
       net-scp (~> 1.1)
       net-ssh (>= 2.1.3)
-    fog-ecloud (0.0.2)
+    fog-ecloud (0.1.1)
       fog-core
       fog-xml
-    fog-json (1.0.0)
+    fog-json (1.0.1)
+      fog-core (~> 1.0)
       multi_json (~> 1.0)
-    fog-local (0.1.0)
+    fog-local (0.2.1)
       fog-core (~> 1.27)
     fog-powerdns (0.1.1)
       fog-core (~> 1.27)
       fog-json (~> 1.0)
       fog-xml (~> 0.1)
-    fog-profitbricks (0.0.1)
+    fog-profitbricks (0.0.2)
       fog-core
       fog-xml
       nokogiri
-    fog-radosgw (0.0.3)
+    fog-radosgw (0.0.4)
       fog-core (>= 1.21.0)
       fog-json
       fog-xml (>= 0.0.1)
@@ -106,36 +103,38 @@ GEM
       fog-core
       fog-json
       fog-xml
-    fog-sakuracloud (1.0.0)
+    fog-sakuracloud (1.0.1)
       fog-core
       fog-json
-    fog-serverlove (0.1.1)
+    fog-serverlove (0.1.2)
       fog-core
       fog-json
-    fog-softlayer (0.4.1)
+    fog-softlayer (0.4.5)
       fog-core
       fog-json
-    fog-storm_on_demand (0.1.0)
+    fog-storm_on_demand (0.1.1)
       fog-core
       fog-json
-    fog-terremark (0.0.4)
+    fog-terremark (0.1.0)
       fog-core
       fog-xml
-    fog-vmfusion (0.0.1)
+    fog-vmfusion (0.1.0)
       fission
       fog-core
-    fog-voxel (0.0.2)
+    fog-voxel (0.1.0)
       fog-core
       fog-xml
-    fog-xml (0.1.1)
+    fog-xml (0.1.2)
       fog-core
       nokogiri (~> 1.5, >= 1.5.11)
     formatador (0.2.5)
+    http-cookie (1.0.2)
+      domain_name (~> 0.5)
     inflecto (0.0.2)
     ipaddress (0.8.0)
     json (1.8.2)
     method_source (0.8.2)
-    mime-types (2.4.3)
+    mime-types (2.5)
     mini_portile (0.6.2)
     multi_json (1.11.0)
     net-scp (1.2.1)
@@ -156,16 +155,17 @@ GEM
       builder
       nokogiri (>= 1.4.1)
       trollop
-    rest-client (1.7.3)
+    rest-client (1.8.0)
+      http-cookie (>= 1.0.2, < 2.0)
       mime-types (>= 1.16, < 3.0)
       netrc (~> 0.7)
     rspec (3.2.0)
       rspec-core (~> 3.2.0)
       rspec-expectations (~> 3.2.0)
       rspec-mocks (~> 3.2.0)
-    rspec-core (3.2.1)
+    rspec-core (3.2.3)
       rspec-support (~> 3.2.0)
-    rspec-expectations (3.2.0)
+    rspec-expectations (3.2.1)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.2.0)
     rspec-mocks (3.2.1)
@@ -174,6 +174,9 @@ GEM
     rspec-support (3.2.2)
     slop (3.6.0)
     trollop (2.1.2)
+    unf (0.1.4)
+      unf_ext
+    unf_ext (0.0.7.1)
 
 PLATFORMS
   ruby
@@ -181,7 +184,6 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 1.3)
   dopv!
-  fog (= 1.28.0)!
   pry
   pry-debugger
   rake

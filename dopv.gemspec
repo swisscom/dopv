@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["pavol.dilung@swisscom.com"]
   spec.description   = %q{Deployment orchestrator for VMs}
   spec.summary       = %q{Deployment orchestrator for VMs}
-  spec.homepage      = ""
+  spec.homepage      = "https://gitlab.swisscloud.io/clu-dop/dopv/tree/master"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files`.split($/)
@@ -29,5 +29,5 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rest-client", "~> 1.7"
   spec.add_dependency "rbovirt", "~> 0.1.0"
   spec.add_dependency "rbvmomi", "~> 1.8.2"
-  spec.add_dependency "fog", "~> 1.28.0"
+  spec.add_dependency "fog", "~> 1.29.0"
 end
