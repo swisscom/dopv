@@ -196,7 +196,7 @@ module Dopv
           unless @plan['infrastructures'][d['infrastructure']]['networks'].has_key?(v['network'])
             raise Errors::PlanError, "#{__method__}: Node #{n}: Invalid network pointer"
           end
-          if v['ip'] && (v['ip'] != "dhcp" || v['ip'] != "none")
+          if v['ip'] && v['ip'] != "dhcp" && v['ip'] != "none"
             error_msg = "#{__method__}: Node #{n}: Invalid IP definition"
             begin
               ip = IPAddr.new(v['ip'])
