@@ -149,7 +149,7 @@ module Dopv
       
       def save(force=false)
         if @@dirty || force
-          File.open(@db_file, 'w') {|f| f.write to_yaml}
+          File.open(@db_file, 'w') {|f| f.write to_yaml} unless @db_file.nil?
         end
       end
       
