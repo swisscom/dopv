@@ -1,3 +1,9 @@
+# 0.0.14 05.05.2015
+
+## [general]
+ * Fixed `can't convert nil into String` when no disk db file is given
+   [CLOUDDOPE-723](https://issue.swisscom.ch/browse/CLOUDDOPE-723)
+
 # 0.0.13 01.05.2015
 
 ## [general]
