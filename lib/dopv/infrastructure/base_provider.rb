@@ -4,7 +4,7 @@ module Dopv
     MEGA_BYTE = 1024 * KILO_BYTE
     GIGA_BYTE = 1024 * MEGA_BYTE
 
-    class BaseNode
+    class BaseProvider
       def self.bootstrap(node_definition, disk_db)
         new(node_definition, disk_db)
       end
