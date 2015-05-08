@@ -1,3 +1,9 @@
+# 0.0.15 08.05.2015
+
+## [vsphere]
+ * Fix removal of empty interface list in add_interfaces
+   [CLOUDDOPE-732](https://issue.swisscom.ch/browse/CLOUDDOPE-732)
+
 # 0.0.14 05.05.2015
 
 ## [general]
