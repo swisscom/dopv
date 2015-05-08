@@ -134,7 +134,7 @@ module Dopv
           Dopv::log.info("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to add interfaces.")
           # Remove all interfaces defined by the template
           Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Removing interfaces defined by template.")
-          vm.interfaces.each(&:destroy)
+          vm.interfaces.each(&:destroy) rescue nil
           # Create interfaces from scratch
           interfaces_config.each do |config|
             log_msg = config[:virtual_switch].nil? ?
