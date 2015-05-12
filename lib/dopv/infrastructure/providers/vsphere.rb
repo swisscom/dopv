@@ -155,17 +155,17 @@ module Dopv
       end
 
       def add_disks(vm, config_disks, disk_db)
-        Dopv::log.info("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to add disks.")
+        Dopv::log.info("Provider: Vsphere: Node #{vm.name}: Trying to add disks.")
 
-        Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Loading persistent disks DB.")
+        Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: Loading persistent disks DB.")
         persistent_disks = disk_db.select { |pd| pd.node == vm.name }
 
         # Check if persistent disks DB is consistent
-        Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Checking DB integrity.")
+        Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: Checking DB integrity.")
         persistent_disks.each do |pd|
           # Disk exists in state DB but not in plan
           unless config_disks.find { |cd| pd.name == cd[:name] }
-            err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} exists in DB but not in plan"
+            err_msg = "Inconsistent disk DB: Disk #{pd.name} exists in DB but not in plan"
             raise Errors::ProviderError, err_msg
           end
         end
@@ -173,7 +173,7 @@ module Dopv
           # Disk exists in a plan but it is not recorded in the state DB for a
           # given node
           if !persistent_disks.empty? && !persistent_disks.find { |pd| cd[:name] == pd.name }
-            err_msg = "#{__method__}: Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
+            err_msg = "Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
             raise Errors::ProviderError, err_msg
           end
         end
@@ -184,7 +184,7 @@ module Dopv
           begin
             attach_volume(vm, pd)
           rescue Exception => e
-            err_msg = "#{__method__}: An error occured while attaching #{pd.name}: #{e}"
+            err_msg = "An error occured while attaching #{pd.name}: #{e}"
             raise Errors::ProviderError, err_msg
           end
         end

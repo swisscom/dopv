@@ -42,6 +42,8 @@ module Dopv
         :storage  => 10737418240
       }
     }
+
+    TMP = '/tmp'
     
     def self.supported?(object)
       case object

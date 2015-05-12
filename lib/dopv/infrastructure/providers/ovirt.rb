@@ -5,310 +5,289 @@ require 'open-uri'
 module Dopv
   module Infrastructure
     class Ovirt < BaseProvider
-      def initialize(node_config, disk_db)
-        @compute_client = nil
-        vm = nil
-        cloud_init = {}
+      def initialize(node_config, data_disks_db)
+        super(node_config, data_disks_db)
+        
+        @compute_connection_opts = {
+          :provider           => 'ovirt',
+          :ovirt_username     => provider_username,
+          :ovirt_password     => provider_password,
+          :ovirt_url          => provider_url,
+          :ovirt_ca_cert_file => provider_ca_cert_file
+        }
 
-        Dopv::log.info("Provider: Ovirt: Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
+        @node_creation_opts = {
+          :name       => node_name,
+          :template   => template.id,
+          :cores      => cores,
+          :memory     => memory,
+          :storage    => storage,
+          :cluster    => cluster.id,
+          :ha         => keep_ha?,
+          :clone      => full_clone?
+        }
 
-        cloud_init[:hostname] = node_config[:fqdn] ? node_config[:fqdn] : node_config[:nodename]
-        cloud_init[:dns] = (node_config[:dns][:nameserver] rescue nil)
-        cloud_init[:domain] = (node_config[:dns][:domain] rescue nil)
+        #vm = nil
+        #cloud_init = {}
 
-        cloud_init[:user] = 'root'
-        cloud_init[:password] = (node_config[:credentials][:root_password] rescue nil)
-        cloud_init[:ssh_authorized_keys] = (node_config[:credentials][:root_ssh_keys] rescue nil)
+        #Dopv::log.info("Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
 
-        nics = []
-        node_config[:interfaces].each do |nic_config|
-          nic = {}
-          if nic_config[:ip_address]
-            nic[:nicname] = nic_config[:name]
-            nic[:ip]      = nic_config[:ip_address]
-            if nic_config[:ip_address] != 'dhcp'
-              nic[:netmask] = nic_config[:ip_netmask]
-              nic[:gateway] = nic_config[:ip_gateway] if nic_config[:set_gateway]
-            end
-          end
-          nics << nic
-        end
-        # Current implementation of cloud-init in rbovirt does not support
-        # DHCP, nor multiple interfaces, hence the first interface for which
-        # a static IP is defined is passed.
-        cloud_init.merge!(nics[0]) if nics[0].is_a?(Hash)
+        #cloud_init[:hostname] = node_config[:fqdn] ? node_config[:fqdn] : node_config[:nodename]
+        #cloud_init[:dns] = (node_config[:dns][:nameserver] rescue nil)
+        #cloud_init[:domain] = (node_config[:dns][:domain] rescue nil)
+
+        #cloud_init[:user] = 'root'
+        #cloud_init[:password] = (node_config[:credentials][:root_password] rescue nil)
+        #cloud_init[:ssh_authorized_keys] = (node_config[:credentials][:root_ssh_keys] rescue nil)
+
+        #nics = []
+        #node_config[:interfaces].each do |nic_config|
+        #  nic = {}
+        #  if nic_config[:ip_address]
+        #    nic[:nicname] = nic_config[:name]
+        #    nic[:ip]      = nic_config[:ip_address]
+        #    if nic_config[:ip_address] != 'dhcp'
+        #      nic[:netmask] = nic_config[:ip_netmask]
+        #      nic[:gateway] = nic_config[:ip_gateway] if nic_config[:set_gateway]
+        #    end
+        #  end
+        #  nics << nic
+        #end
+        ## Current implementation of cloud-init in rbovirt does not support
+        ## DHCP, nor multiple interfaces, hence the first interface for which
+        ## a static IP is defined is passed.
+        #cloud_init.merge!(nics[0]) if nics[0].is_a?(Hash)
 
         begin
           # Try to get the datacenter ID first.
-          @compute_client = create_compute_client(
-            :username     => node_config[:provider_username],
-            :password     => node_config[:provider_password],
-            :endpoint     => node_config[:provider_endpoint],
-            :datacenter   => node_config[:datacenter],
-            :nodename     => node_config[:nodename]
-          )
-
-          if exist?(node_config[:nodename])
-            Dopv::log.warn("Provider: Ovirt: Node #{node_config[:nodename]}: #{__method__}: Already exists, skipping.")
+          if node_exist?
+            Dopv::log.warn("Node #{node_name}: Already exists, skipping.")
             return
           end
 
-          # Create a VM
-          vm = create_vm(node_config)
+          node = create_node_instance
+          binding.pry
 
           # Add interfaces
-          vm = add_interfaces(vm, node_config[:interfaces])
+          #vm = add_interfaces(vm, node_config[:interfaces])
 
           # Add disks
-          vm = add_disks(vm, node_config[:disks], disk_db)
+          #vm = add_disks(vm, node_config[:disks], data_disks_db)
 
           # Assign affinnity groups
-          vm = assign_affinity_groups(vm, node_config[:affinity_groups])
+          #vm = assign_affinity_groups(vm, node_config[:affinity_groups])
 
           # Start a node with cloudinit
-          vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
+          #vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
 
           # Reload the node
-          vm.reload
+          #vm.reload
         rescue Exception => e
-          destroy_vm(vm, disk_db)
-          raise Errors::ProviderError, "Ovirt: Node #{node_config[:nodename]}: #{e}"
+          #destroy_vm(vm, data_disks_db)
+          raise Errors::ProviderError, "Node #{node_name}: #{e}"
         end
       end
 
       private
 
-      def get_endpoint_ca_cert(url)
-        uri = URI.parse(url)
-        local_ca_file  = "/tmp/#{uri.hostname}_#{uri.port}_ca.crt"
-        remote_ca_file = "#{uri.scheme}://#{uri.host}:#{uri.port}/ca.crt"
-        local_ca = remote_ca = nil
-        unless File.exists?(local_ca_file)
-          begin
-            remote_ca = open(remote_ca_file, :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE)
-            local_ca  = open(local_ca_file, 'w')
-            local_ca.write(remote_ca.read)
-          rescue
-            raise Errors::ProviderError, "#{__method__} #{uri}: Cannot download CA certificate"
-          ensure
-            remote_ca.close if remote_ca
-            local_ca.close if local_ca
-          end
+      def wait_for_task_completion(node_instance)
+        node_instance.wait_for { !locked? }
+      end
+
+      def compute_provider
+        unless @compute_provider
+          super
+          ::Dopv::log.debug("Node #{node_name}: Recreating client with proper datacenter.")
+          @compute_connection_opts[:ovirt_datacenter] = datacenter[:id]
+          @compute_provider = ::Fog::Compute.new(@compute_connection_opts)
         end
-        local_ca_file
+        @compute_provider
       end
 
-      def create_compute_client(attrs)
-        Dopv::log.info("Provider: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Creating compute client.")
+      def create_node_instance
+        begin
+          # Create node instance
+          node_instance = super
 
-        # Find the datacenter ID
-        Dopv::log.debug("Provider: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Getting data center ID.")
-        compute_client = Fog::Compute.new(
-          :provider           => 'ovirt',
-          :ovirt_username     => attrs[:username],
-          :ovirt_password     => attrs[:password],
-          :ovirt_url          => attrs[:endpoint],
-          :ovirt_ca_cert_file => get_endpoint_ca_cert(attrs[:endpoint])
-        )
-        datacenter = compute_client.datacenters.find { |dc| dc[:name] == attrs[:datacenter] }
-        raise Errors::ProviderError, "#{__method__} #{attrs[:datacenter]}: No such data center" unless datacenter
+          # For each disk, set up wipe after delete flag
+          node_instance.volumes.each do |v|
+            ::Dopv::log.debug("Node #{node_name}: Setting wipe after delete for disk #{v.alias}.")
+            update_node_volume(node_instance, v, {:wipe_after_delete => true})
+          end
+        rescue Exception => e
+          raise Errors::ProviderError, "Error while updating volume: #{e}"
+        end
 
-        # Get a new compute client from a proper datacenter
-        Dopv::log.debug("Provider: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Recreating client with proper datacenter.")
-        Fog::Compute.new(
-          :provider           => 'ovirt',
-          :ovirt_username     => attrs[:username],
-          :ovirt_password     => attrs[:password],
-          :ovirt_url          => attrs[:endpoint],
-          :ovirt_ca_cert_file => get_endpoint_ca_cert(attrs[:endpoint]),
-          :ovirt_datacenter   => datacenter[:id]
-        )
+        node_instance
       end
 
-      def destroy_vm(vm, disk_db)
+      def destroy_node_instance(instance, data_disks_db)
         if vm
-          Dopv::log.warn("Provider: Ovirt: Node #{vm.name}: #{__method__}: An error occured, rolling back.")
+          ::Dopv::log.warn("Node #{vm.name}: #{__method__}: An error occured, rolling back.")
           vm.wait_for { !locked? }
-          disks = disk_db.select {|disk| disk.node == vm.name}
+          disks = data_disks_db.select {|disk| disk.node == vm.name}
           disks.each do |disk|
-            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to detach disk #{disk.name}.")
+            ::Dopv::log.debug("Node #{vm.name}: #{__method__}: Trying to detach disk #{disk.name}.")
             vm.detach_volume(:id => disk.id) rescue nil
             vm.wait_for { !locked? }
           end
-          Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Destroying VM.")
+          ::Dopv::log.debug("Node #{vm.name}: #{__method__}: Destroying VM.")
           vm.destroy
         end
       end
 
-      def create_vm(attrs)
-        Dopv::log.info("Provider: Ovirt: Node #{attrs[:nodename]}: #{__method__}: Trying to create VM.")
-        begin
-          vm = @compute_client.servers.create(
-            :name         => attrs[:nodename],
-            :template     => get_template_id(attrs[:image]),
-            :cores        => get_cores(attrs),
-            :memory       => get_memory(attrs),
-            :storage      => get_storage(attrs),
-            :cluster      => get_cluster_id(attrs[:cluster]),
-            :ha           => attrs[:keep_ha].nil? ? true : attrs[:keep_ha],
-            :clone        => attrs[:full_clone].nil? ? true : attrs[:full_clone]
-          )
-          vm.wait_for { !locked? }
-
-          # For each disk, set up wipe after delete flag
-          vm.volumes.each do |vol|
-            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Setting wipe after delete for disk #{vol.alias}.")
-            vm.update_volume(:id => vol.id, :wipe_after_delete => true)
-            vm.wait_for { !locked? }
-          end
-        rescue Exception => e
-          raise Errors::ProviderError, "#{__method__}: #{e}"
-        end
-        vm
+      def add_node_nic(node_instance, attrs)
+        node_instance.add_interface(attrs)
+        node_instance.interfaces.reload
       end
 
-      def get_storage_domain_id(storage_domain_name)
-        storage_domain = @compute_client.storage_domains.find { |sd| sd.name == storage_domain_name}
-        raise Errors::ProviderError, "#{__method__} #{storage_domain_name}: No such storage domain" unless storage_domain
-        storage_domain.id
+      def update_node_nic(node_instance, nic, attrs)
+        node_instance.update_interface(attrs.merge({:id => nic.id}))
+        wait_for_task_completion(node_instance)
       end
 
-      def get_volume_obj(volume_id)
-        volume = @compute_client.volumes.find { |vol| vol.id == volume_id }
-        raise Errors::ProviderError, "#{__method__} #{volume_id}: No such volume" unless volume
-        volume
-      end
-
-      def get_affinity_group_id(affinity_group_name)
-        affinity_group = @compute_client.affinity_groups.find {|ag| ag.name == affinity_group_name}
-        raise Errors::ProviderError, "#{__method__} #{affinity_group_name}: No such affinity group" unless affinity_group
-        affinity_group.id
-      end
-
-      def add_interfaces(vm, interfaces)
-        Dopv::log.info("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to add interfaces.")
+      def add_node_nics(node_instance)
+        ::Dopv::log.info("Node #{node_name}: Trying to add interfaces.")
+        
         # Remove all interfaces defined by the template
-        Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Removing interfaces defined by template.")
-        vm.interfaces.each do |nic|
-          vm.destroy_interface(:id => nic.id)
-          vm.wait_for { !locked? }
-        end
+        remove_node_nics(node_instance)
 
         # Create network interfaces. In this step, interfaces are not assigned. This step
         # is used for MAC addresses reservation
-        (1..interfaces.size).each do |idx|
-          nicname = "tmp%d" % idx
-          Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Creating interface #{nicname}.")
-          vm.add_interface(:name => nicname, :network_name => 'rhevm', :plugged => true, :linked => true)
-          vm.wait_for { !locked? }
+        (1..interfaces_config.size).each do |i|
+          name = "tmp#{i}"
+          ::Dopv::log.debug("Node #{node_name}: Creating interface #{name}.")
+          attrs = {
+            :name => name,
+            :network_name => 'rhevm',
+            :plugged => true,
+            :linked => true
+          }
+          add_node_nic(node_instance, attrs)
         end
 
         # Rearrange interfaces by their MAC addresses and assign them into
         # appropriate networks
-        interfaces.reverse!
-        vm.interfaces.reload.sort_by do |nic| nic.mac
-        config = interfaces.pop
-        Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Configuring interface #{nic.name} (#{nic.mac}) as #{config[:name]} in #{config[:network]}.")
-        vm.update_interface(:id => nic.id, :name => config[:name], :network_name => config[:network])
-        vm.wait_for { !locked? }
+        interfaces_config.reverse!
+        node_instance.interfaces.sort_by do |n| n.mac
+          cfg = interfaces_config.pop
+          ::Dopv::log.debug("Node #{node_name}: Configuring interface #{n.name} (#{n.mac}) as #{cfg[:name]} in #{cfg[:network]}.")
+          attrs = {
+            :name => cfg[:name],
+            :network_name => cfg[:network],
+          }
+          update_node_nic(node_instance, n, attrs)
         end
-
-        # Explicitly reload nics & return VM
-        vm.interfaces.reload
-        vm
       end
 
-      def assign_affinity_groups(vm, affinity_groups)
-        Dopv::log.info("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to assign affinity groups.")
-        if affinity_groups
-          affinity_groups.each do |ag_name|
-            ag_id = get_affinity_group_id(ag_name)
-            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Assigning affinity group #{ag_name}.")
-            vm.add_to_affinity_group(:id => ag_id)
-            vm.wait_for { !locked? }
-          end
-        end
-        vm
+      def remove_node_nics(node_instance)
+        ::Dopv::log.debug("Node #{node_name}: Removing interfaces defined by template.")
+        node_instance.interfaces.each { |i| node_instance.destroy_interface(:id => i.id) } rescue nil
+        node_instance.interfaces.reload
       end
 
-      def add_disks(vm, config_disks, disk_db)
-        Dopv::log.info("Provider: Ovirt: Node #{vm.name}: #{__method__}: Trying to add disks.")
+      def add_node_affinity(node_instance, name)
+        affinity_group = compute_provider.affinity_groups.find { |g| g.name == name }
+        raise Errors::ProviderError, "#{__method__} #{name}: No such affinity group" unless affinity_group
+        node_instance.add_to_affinity_group(:id => affinity_group.id)
+      end
 
-        Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Loading persistent disks DB.")
-        persistent_disks = disk_db.select { |pd| pd.node == vm.name }
+      def add_node_volume(node_instance, attrs)
+        storage_domain = compute_provider.storage_domains.find { |d| d.name == attrs[:pool] }
+        raise Errors::ProviderError "No such storage domain #{attrs[:storage_domain]}" unless storage_domain
+
+        attrs[:size] = get_size(attrs[:size])
+        attrs[:storage_domain] = storage_domain.id
+
+        volume = node_instance.add_volume(attrs.merge(:bootable => false, :wipe_after_delete => true))
+        wait_for_task_completion(node_instance)
+        volume
+      end
+      
+      def attach_node_volume(node_instance, volume)
+        node_instance.attach_volume(:id => volume.id)
+        wait_for_task_completion(node_instance)
+      end
+
+      def detach_node_volume(node_instance, volume)
+        node_instance.detach_volume(:id => volume.id)
+        wait_for_task_completion(node_instance)
+      end
+      
+      def record_node_volume(node_instance, volume)
+        ::Dopv::log.debug("Node #{node_name}: Recording volume #{[:name]} into DB.")
+        data_disks_db << {
+          :node => node_name,
+          :name => volume.alias,
+          :id   => volume.id,
+          :pool => volume.storage_domain,
+          :size => volume.size
+        }
+        super
+      end
+
+      def add_node_data_volumes(node_instance)
+        ::Dopv::log.info("Node #{node_name}: Adding data volumes.")
+
+        ::Dopv::log.debug("Node #{node_name}: Loading data volumes DB.")
+        data_volumes = data_disks_db.select { |dv| dv.node == node_name }
 
         # Check if persistent disks DB is consistent
-        Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Checking DB integrity.")
-        persistent_disks.each do |pd|
+        ::Dopv::log.debug("Node #{node_name}: Checking data volumes DB integrity.")
+        data_volumes.each do |dv|
           # Disk exists in state DB but not in plan
-          unless config_disks.find { |cd| pd.name == cd[:name] }
-            err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} exists in DB but not in plan"
-            raise Errors::ProviderError, err_msg
-          end
-          # Disk exists in state DB but not on the server side
-          unless @compute_client.volumes.find { |vol| pd.id == vol.id }
-            err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} does not exist on the server side"
-            raise Errors::ProviderError, err_msg
-          end
-          # Disk exists in state DB as well as on server side, however storage
-          # pools do not match,
-          unless @compute_client.volumes.find{|vol| pd.id == vol.id && pd.pool == vol.storage_domain}
-            err_msg = "#{__method__}: Inconsistent disk DB: Disk #{pd.name} is in a different storage pool on the server side"
+          unless volumes_config.find { |cv| dv.name == cv[:name] }
+            err_msg = "Inconsistent data volumes DB: Volume #{dv.name} exists in DB but not in plan"
             raise Errors::ProviderError, err_msg
           end
         end
-        config_disks.each do |cd|
+        volumes_config.each do |cv|
           # Disk exists in a plan but it is not recorded in the state DB for a
           # given node
-          if !persistent_disks.empty? && !persistent_disks.find { |pd| cd[:name] == pd.name }
-            err_msg = "#{__method__}: Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
+          if !data_volumes.empty? && !data_volumes.find { |dv| cv[:name] == dv.name }
+            err_msg = "Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
             raise Errors::ProviderError, err_msg
           end
         end
 
         # Attach all persistent disks
-        persistent_disks.each do |pd|
-          Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Attaching disk #{pd.name} [#{pd.id}].")
-          vm.attach_volume(:id => pd.id)
-          vm.wait_for { !locked? }
+        data_volumes.each do |dv|
+          ::Dopv::log.debug("Node #{node_name}: Attaching disk #{dv.name} [#{dv.id}].")
+          attach_node_volume(node_instance, dv)
         end
 
         # Create those disks that do not exist in peristent disks DB and
         # record them into DB
-        config_disks.each do |cd|
-          unless vm.volumes.find { |vol| vol.alias == cd[:name] }
-            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Creating disk #{cd[:name]} [#{cd[:size]}].")
-            size = case cd[:size]
-                   when /[1-9]*[Mm]/
-                     (cd[:size].split(/[Mm]/)[0].to_f*1024*1024).to_i
-                   when /[1-9]*[Gg]/
-                     (cd[:size].split(/[Gg]/)[0].to_f*1024*1024*1024).to_i
-                   when /[1-9]*[Tt]/
-                     (cd[:size].split(/[Tt]/)[0].to_f*1024*1024*1024*1024).to_i
-                   end
-            storage_domain = get_storage_domain_id(cd[:pool])
-            vm.add_volume(
-              :storage_domain => storage_domain,
-              :size => size,
-              :bootable => 'false',
-              :alias => cd[:name],
-              :wipe_after_delete => 'true'
-            )
-            vm.wait_for { !locked? }
-            # Record volume to a persistent disks database
-            Dopv::log.debug("Provider: Ovirt: Node #{vm.name}: #{__method__}: Recording disk #{cd[:name]} into DB.")
-            disk = vm.volumes.find {|vol| vol.alias == cd[:name]}
-            disk_db << {
-              :node => vm.name,
-              :name => disk.alias,
-              :id   => disk.id,
-              :pool => disk.storage_domain,
-              :size => disk.size
+        volumes_config.each do |cv|
+          unless node_instance.volumes.find { |v| v == cv[:name] }
+            ::Dopv::log.debug("Node #{node_name}: Creating disk #{cd[:name]} [#{cd[:size]}].")
+            attrs = {
+              :storage_domain => cv[:pool],
+              :size => cv[:size],
+              :alias => cd[:name]
             }
-            disk_db.save
+            volume = add_node_volume(node_instance, attrs)
+
+            record_node_volume(node_instance, volume)
           end
         end
-        vm
+      end
+      
+      def provider_ca_cert_file
+        local_ca_file = "#{TMP}/#{provider_host}_#{provider_port}_ca.crt"
+        remote_ca_file = "#{provider_scheme}://#{provider_host}:#{provider_port}/ca.crt"
+        unless File.exists?(local_ca_file)
+          begin
+            open(remote_ca_file, :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE) do |remote_ca|
+              local_ca = open(local_ca_file, 'w')
+              local_ca.write(remote_ca.read)
+              local_ca.close
+            end
+          rescue
+            raise Errors::ProviderError, "#{provider_url}: Cannot download CA certificate"
+          end
+        end
+        local_ca_file
       end
     end
   end
