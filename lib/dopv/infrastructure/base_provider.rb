@@ -7,8 +7,10 @@ module Dopv
     MEGA_BYTE = 1024 * KILO_BYTE
     GIGA_BYTE = 1024 * MEGA_BYTE
 
+    class ProviderError < StandardError; end
+
     class BaseProvider
-      attr_reader :node_config, :data_disks_db
+      attr_reader :data_disks_db
 
       def self.bootstrap(node_config, data_disks_db)
         new(node_config, data_disks_db)
@@ -16,7 +18,6 @@ module Dopv
 
       def initialize(node_config, data_disks_db)
         @compute_provider = nil
-        @node_instance = nil
         @node_config = node_config
         @data_disks_db = data_disks_db
       end
@@ -60,15 +61,15 @@ module Dopv
       end
 
       def interfaces_config
-        @interfaces_config ||= (node_config[:interfaces] rescue [])
+        @interfaces_config ||= (@node_config[:interfaces] rescue [])
       end
 
       def affinities_config
-        @affinities_config ||= (node_config[:affinity_groups] rescue [])
+        @affinities_config ||= (@node_config[:affinity_groups] rescue [])
       end
 
       def volumes_config
-        @volumes_config ||= (node_config[:disks] rescue [])
+        @volumes_config ||= (@node_config[:disks] rescue [])
       end
 
       def compute_provider
@@ -80,7 +81,7 @@ module Dopv
         begin
           compute_provider.servers.find { |node| node.name == node_name } ? true : false
         rescue => e
-          raise Errors::ProviderError, "An error occured while searching node: #{e}"
+          raise ProviderError, "An error occured while searching node: #{e}"
         end
       end
       
@@ -91,26 +92,29 @@ module Dopv
           elsif d.methods.include?(:name)
             d.name == @node_config[:datacenter]
           else
-            raise Errors::ProviderError, "Unsupported datacenter class #{d.class}"
+            raise ProviderError, "Unsupported datacenter class #{d.class}"
           end
         end
-        raise Errors::ProviderError, "#{@node_config[:datacenter]}: No such data center" unless @datacenter
+        raise ProviderError, "No such data center #{@node_config[:datacenter]}" unless @datacenter
         @datacenter
       end
 
       def cluster(filters={})
         @cluster ||= compute_provider.clusters(filters).find { |c| c.name == @node_config[:cluster] }
-        raise Errors::ProviderError, "#{@node_config[:cluster]}: No such cluster" unless @cluster
+        raise ProviderError, "No such cluster #{@node_config[:cluster]}" unless @cluster
         @cluster
       end
 
       def template(filters={})
         @template ||= compute_provider.templates.all(filters).find { |t| t.name == @node_config[:image] }
-        raise Errors::ProviderError, "#{@node_config[:image]}: No such template" unless @template
+        raise ProviderError, "No such template #{@node_config[:image]}" unless @template
         @template
       end
 
       def wait_for_task_completion(node_instance)
+      end
+      
+      def node_instance_running?(node_instance)
       end
 
       def create_node_instance
@@ -118,6 +122,37 @@ module Dopv
         node_instance = compute_provider.servers.create(@node_creation_opts)
         wait_for_task_completion(node_instance)
         node_instance
+      end
+
+      def destroy_node_instance(node_instance, destroy_data_volumes=false)
+        if node_instance
+          stop_node_instance(node_instance)
+          
+          unless destroy_data_volumes
+            data_volumes = data_disks_db.select { |v| disk.node == node_name }
+            data_volumes.each do |v|
+              ::Dopv::log.debug("Node #{vm.name} Detaching data volume #{v.name}.")
+              detach_node_volume(node_instance, v) rescue nil
+            end
+          end
+
+          ::Dopv::log.warn("Node #{node_name}: Destroying node.")
+          node_instance.destroy
+          wait_for_task_completion(node_instance)
+        end
+      end
+
+      def customize_node_instance(node_instance)
+      end
+
+      def start_node_instance(node_instance)
+      end
+
+      def stop_node_instance
+        if node_instance_running?(node_instance)
+          node_instance.stop
+          wait_for_task_completion(node_instance)
+        end
       end
 
       def add_node_nic(node_instance, attrs)
@@ -154,12 +189,56 @@ module Dopv
 
       def detach_node_volume(node_instance, volume)
       end
-
-      def record_node_volume
-        data_disks_db.save
-      end
-
+      
       def add_node_data_volumes(node_instance)
+        ::Dopv::log.info("Node #{node_name}: Adding data volumes.")
+
+        ::Dopv::log.debug("Node #{node_name}: Loading data volumes DB.")
+        data_volumes = data_disks_db.select { |dv| dv.node == node_name }
+
+        # Check if persistent disks DB is consistent
+        ::Dopv::log.debug("Node #{node_name}: Checking data volumes DB integrity.")
+        data_volumes.each do |dv|
+          # Disk exists in state DB but not in plan
+          unless volumes_config.find { |cv| dv.name == cv[:name] }
+            err_msg = "Inconsistent data volumes DB: Volume #{dv.name} exists in DB but not in plan"
+            raise ProviderError, err_msg
+          end
+        end
+        volumes_config.each do |cv|
+          # Disk exists in a plan but it is not recorded in the state DB for a
+          # given node
+          if !data_volumes.empty? && !data_volumes.find { |dv| cv[:name] == dv.name }
+            err_msg = "Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
+            raise ProviderError, err_msg
+          end
+        end
+
+        # Attach all persistent disks
+        data_volumes.each do |dv|
+          ::Dopv::log.debug("Node #{node_name}: Attaching data volume #{dv.name} [#{dv.id}].")
+          begin
+            attach_node_volume(node_instance, dv)
+          rescue Exception => e
+            err_msg = "An error occured while attaching data volume #{dv.name}: #{e}"
+            raise ProviderError, err_msg
+          end
+        end
+
+        # Create those disks that do not exist in peristent disks DB and
+        # record them into DB
+        volumes_config.each do |cv|
+          unless node_instance.volumes.find { |v| v == cv[:name] }
+            ::Dopv::log.debug("Node #{node_name}: Creating disk #{cv[:name]} [#{cv[:size]}].")
+            volume = add_node_volume(node_instance, cv)
+            record_node_data_volume(volume)
+          end
+        end
+      end
+      
+      def record_node_data_volume(volume)
+        data_disks_db << volume.merge(:node => node_name)
+        data_disks_db.save
       end
 
       def add_node_affinity(node_instance, name)
@@ -181,17 +260,19 @@ module Dopv
                         else
                           value.to_i rescue 0
                         end
-        raise Errors::ProviderError, "#{value}: Invalid value" unless value > 0
+        raise ProviderError, "Invalid value #{value}" unless  size_in_bytes > 0
 
         case return_unit
         when :gigabyte
-          (value / GIGA_BYTE).to_i
+          (size_in_bytes / GIGA_BYTE).to_i
         when :megabyte
-          (value / MEGA_BYTE).to_i
+          (size_in_bytes / MEGA_BYTE).to_i
         when :kilobyte
-          (value / KILO_BYTE).to_i
+          (size_in_bytes / KILO_BYTE).to_i
         when :byte
-          value
+          size_in_bytes
+        else
+          raise ProviderError, "Invalid return unit value #{return_unit}"
         end
       end
 
@@ -212,7 +293,7 @@ module Dopv
                   end
           @cores = value
         end
-        raise Errors::ProviderError, "#{value}: Invalid cores value" unless @cores > 0
+        raise ProviderError, "Invalid cores value #{value}" unless @cores > 0
         @cores
       end
 
