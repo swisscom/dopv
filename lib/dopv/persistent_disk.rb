@@ -5,7 +5,9 @@ module Dopv
     def self.load(db_file)
       DB.new(db_file)
     end
-    
+
+    class PersistentDiskError < StandardError; end
+
     class Entry
       DISK_DESC_KEYS = [:id, :name, :node, :pool, :size]
 
@@ -19,7 +21,7 @@ module Dopv
           @pool = attrs[:pool]
           @size = attrs[:size].to_i
         else
-          raise Errors::PersistentDiskError, "Invalid disk entry"
+          raise PersistentDiskError, "Invalid disk entry"
         end
       end
 
@@ -35,7 +37,7 @@ module Dopv
       end
 
       def update(attrs={})
-        raise Errors::PersistentDiskError, "Update attributes must be a hash" unless attrs.is_a?(Hash)
+        raise PersistentDiskError, "Update attributes must be a hash" unless attrs.is_a?(Hash)
         @node = attrs[:node] if attrs[:node]
         @name = attrs[:name] if attrs[:name]
         @id   = attrs[:id]   if attrs[:id]
@@ -49,7 +51,7 @@ module Dopv
       end
 
       def to_hash
-        { "name" => @name, "id" => @id, "pool" => @pool, "size" => @size, "node" => @node }
+        { :name => @name, :id => @id, :pool => @pool, :size => @size }
       end
     end
 
@@ -82,7 +84,7 @@ module Dopv
       def append(entry)
         each do |disk|
           if disk == entry
-            raise Errors::PersistentDiskError, "Disk #{disk.name} already exists for node #{disk.node}"
+            raise PersistentDiskError, "Disk #{disk.name} already exists for node #{disk.node}"
           end
         end
         if entry.is_a?(Entry)
@@ -106,11 +108,11 @@ module Dopv
         when Entry
           disk = find {|d| d == entry}
         when Hash
-          raise Errors::PersistentDiskError, "Entry hash must contain a node name" unless entry.has_key?(:node)
-          raise Errors::PersistentDiskError, "Entry hash must contain a disk name" unless entry.has_key?(:name)
+          raise PersistentDiskError, "Entry hash must contain a node name" unless entry.has_key?(:node)
+          raise PersistentDiskError, "Entry hash must contain a disk name" unless entry.has_key?(:name)
           disk = find {|d| d.node == entry[:node] && d.name == entry[:name]}
         else
-          raise Errors::PersistentDiskError, "Disk entry must be Hash or Entry"
+          raise PersistentDiskError, "Disk entry must be Hash or Entry"
         end
         disk.update(attrs) if disk
       end
@@ -120,7 +122,7 @@ module Dopv
         when Entry
           @@db.delete_if {|disk| disk == entry}
         when Hash
-          raise Errors::PersistentDiskError, "Entry hash must contain at least a node name" unless entry.has_key?(:node)
+          raise PersistentDiskError, "Entry hash must contain at least a node name" unless entry.has_key?(:node)
           if entry.has_key?(:name)
             @@db.delete_if {|disk| disk.node == entry[:node] && disk.name == entry[:name]}
           else
@@ -143,13 +145,13 @@ module Dopv
       
       def to_yaml
         db = {}
-        each {|disk| (db[disk.node] ||= []) << disk.to_hash.delete_if {|k| k == disk.node}}
+        each { |disk| (db[disk.node] ||= []) << disk.to_hash.inject({}) { |h,(k,v)| h[k.to_s] = v; h} }
         db.to_yaml
       end
       
       def save(force=false)
         if @@dirty || force
-          File.open(@db_file, 'w') {|f| f.write to_yaml} unless @db_file.nil?
+          File.open(@db_file, 'w') {|f| f.write(to_yaml)} unless @db_file.nil?
         end
       end
       

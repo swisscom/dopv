@@ -67,18 +67,17 @@ ARGV << "-h" if ARGV.empty?
 begin
  parser.parse!
 
- Dopv.log(options[:logfile])
- Dopv.log.progname = PROGNAME
- Dopv.log.level = options[:loglevel]
+ ::Dopv.log(options[:logfile])
+ ::Dopv.log.progname = PROGNAME
+ ::Dopv.log.level = options[:loglevel]
 
- plan = Dopv::Plan.load(options[:plan], options[:disk_db])
- plan.execute
+ ::Dopv::Plan.run(options[:plan], options[:disk_db])
 
 rescue OptionParser::ParseError => e
   error_code = ERROR_CODES[:parse_error]
-rescue Dopv::Errors::PlanError => e
+rescue ::Dopv::PlanError => e
   error_code = ERROR_CODES[:plan_error]
-rescue Dopv::Errors::ProviderError => e
+rescue ::Dopv::Infrastructure::ProviderError => e
   error_code =  ERROR_CODES[:provider_error]
 rescue SystemExit
   nil

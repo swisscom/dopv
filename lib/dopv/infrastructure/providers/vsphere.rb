@@ -1,278 +1,131 @@
+require 'rbvmomi'
+require 'digest/sha2'
 require 'fog'
-require 'uri'
 
 module Dopv
   module Infrastructure
-    class Vsphere < BaseProvider
-      # Based on
-      # http://pubs.vmware.com/vsphere-50/index.jsp?topic=/com.vmware.wssdk.apiref.doc_50/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
-      GUEST_ID_TO_OS_FAMILY = {
-        :debian6_64Guest        => :linux,
-        :debian6_Guest          => :linux,
-        :rhel4_64Guest          => :linux,
-        :rhel4Guest             => :linux,
-        :rhel5_64Guest          => :linux,
-        :rhel5Guest             => :linux,
-        :rhel6_64Guest          => :linux,
-        :rhel6Guest             => :linux,
-        :rhel7_64Guest          => :linux,
-        :rhel7Guest             => :linux,
-        :oracleLinux64Guest     => :linux,
-        :oracleLinuxGuest       => :linux,
-        :ubuntu64Guest          => :linux,
-        :ubuntuGuest            => :linux,
-        :windows7_64Guest       => :windows,
-        :windows7Guest          => :windows,
-        :windows7Server64Guest  => :windows,
-        :windows8_64Guest       => :windows,
-        :windows8Guest          => :windows,
-        :windows8Server64Guest  => :windows
-      }
+    class Vsphere < Base
+      def initialize(node_config, data_disks_db)
+        super(node_config, data_disks_db)
 
-      def initialize(node_config, disk_db)
-        @compute_client = nil
-        vm = nil
+        @compute_connection_opts = {
+          :provider                     => 'vsphere',
+          :vsphere_username             => provider_username,
+          :vsphere_password             => provider_password,
+          :vsphere_server               => provider_host,
+          :vsphere_port                 => provider_port,
+          :vsphere_expected_pubkey_hash => provider_expected_pubkey_hash
+        }
 
-        Dopv::log.info("Provider: Vsphere: Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
-
-        begin
-          # Try to get the datacenter ID first.
-          @compute_client = create_compute_client(
-            :username     => node_config[:provider_username],
-            :password     => node_config[:provider_password],
-            :apikey       => node_config[:provider_apikey],
-            :endpoint     => node_config[:provider_endpoint],
-            :datacenter   => node_config[:datacenter],
-            :nodename     => node_config[:nodename]
-          )
-
-          if exist?(node_config[:nodename])
-            Dopv::log.warn("Provider: Vsphere: Node #{node_config[:nodename]}: #{__method__}: Already exists, skipping.")
-            return
-          end
-
-          # Create a VM
-          vm = create_vm(node_config)
-          #vm = @compute_client.servers.find { |s| s.name == node_config[:nodename] }
-
-          # Add interfaces
-          add_interfaces(vm, node_config[:interfaces])
-
-          # Add disks
-          add_disks(vm, node_config[:disks], disk_db)
-
-          # Assign affinnity groups
-          #vm = assign_affinity_groups(vm, node_config[:affinity_groups])
-
-          # Start the node
-          start(vm, customize(vm, node_config))
-        rescue Exception => e
-          destroy_vm(vm, disk_db)
-          raise Errors::ProviderError, "Vsphere: Node #{node_config[:nodename]}: #{e}"
-        end
+        @node_creation_opts = {
+          'name'          => nodename,
+          'datacenter'    => datacenter.name,
+          'template_path' => template_path,
+          'dest_folder'   => dest_folder,
+          'numCPUs'       => cores,
+          'memoryMB'      => memory(:megabyte),
+        }
       end
 
       private
 
-      def create_compute_client(attrs)
-        Dopv::log.info("Provider: Vsphere: Node #{attrs[:nodename]}: #{__method__}: Creating compute client.")
-        uri = URI.parse(attrs[:endpoint])
-
-        compute_client = Fog::Compute.new(
-          :provider                     => 'vsphere',
-          :vsphere_username             => attrs[:username],
-          :vsphere_password             => attrs[:password],
-          :vsphere_server               => uri.host,
-          :vsphere_port                 => uri.port,
-          :vsphere_expected_pubkey_hash => attrs[:apikey]
-        )
-        compute_client
+      def template_path
+        @node_config[:image]
       end
 
-      def destroy_vm(vm, disk_db)
-        if vm
-          Dopv::log.warn("Provider: Vsphere: Node #{vm.name}: #{__method__}: An error occured, rolling back.")
-          vm.volumes.all.each do |v|
-            if disk = disk_db.find { |d| d.node == vm.name && v.filename == d.id }
-              Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to detach disk #{disk.name}.")
-              detach_volume(v) rescue nil
-            end
-          end
-          Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Destroying VM.")
-          vm.destroy
-        end
+      def dest_folder
+        @node_config[:dest_folder]
       end
 
-      def create_vm(attrs)
-        Dopv::log.info("Provider: Vsphere: Node #{attrs[:nodename]}: #{__method__}: Trying to create VM.")
+      def searchdomains
         begin
-          clone_attrs = {
-            'name'          => attrs[:nodename],
-            'datacenter'    => attrs[:datacenter],
-            'template_path' => attrs[:image],
-            'numCPUs'       => get_cores(attrs),
-            'memoryMB'      => get_memory(attrs, :megabyte),
-            'power_on'      => false,
-            'wait'          => true
-          }
-          clone_attrs['dest_folder'] = attrs[:dest_folder] unless attrs[:dest_folder].nil?
-          clone_attrs['datastore']  = attrs[:default_pool] unless attrs[:default_pool].nil?
-          vm = @compute_client.vm_clone(clone_attrs)
-        rescue Exception => e
-          raise Errors::ProviderError, "#{__method__}: #{e}"
-        end
-
-        @compute_client.servers.get(vm['new_vm']['id'])
-      end
-
-      def get_affinity_group_id(affinity_group_name)
-        raise Errors::ProviderError, "#{__method__}: Not implemented yet"
-      end
-
-      def add_interfaces(vm, interfaces_config)
-        Dopv::log.info("Provider: Vsphere: Node #{vm.name}: #{__method__}: Trying to add interfaces.")
-        # Remove all interfaces defined by the template
-        Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Removing interfaces defined by template.")
-        vm.interfaces.each(&:destroy)
-        # Create interfaces from scratch
-        interfaces_config.each do |config|
-          log_msg = config[:virtual_switch].nil? ?
-            "Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating interface #{config[:name]} in #{config[:network]}." :
-          "Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating interface #{config[:name]} in #{config[:network]} (#{config[:virtual_switch]})."
-          Dopv::log.debug(log_msg)
-          vm.interfaces.create(
-            :name           => config[:name],
-            :network        => config[:network],
-            :virtualswitch  => config[:virtual_switch],
-            :type           => 'VirtualVmxnet3'
-          )
-        end
-        vm.interfaces.reload
-      end
-
-      def assign_affinity_groups(vm, affinity_groups)
-        raise Errors::ProviderError, "#{__method__}: Not implemented yet"
-      end
-
-      def add_disks(vm, config_disks, disk_db)
-        Dopv::log.info("Provider: Vsphere: Node #{vm.name}: Trying to add disks.")
-
-        Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: Loading persistent disks DB.")
-        persistent_disks = disk_db.select { |pd| pd.node == vm.name }
-
-        # Check if persistent disks DB is consistent
-        Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: Checking DB integrity.")
-        persistent_disks.each do |pd|
-          # Disk exists in state DB but not in plan
-          unless config_disks.find { |cd| pd.name == cd[:name] }
-            err_msg = "Inconsistent disk DB: Disk #{pd.name} exists in DB but not in plan"
-            raise Errors::ProviderError, err_msg
-          end
-        end
-        config_disks.each do |cd|
-          # Disk exists in a plan but it is not recorded in the state DB for a
-          # given node
-          if !persistent_disks.empty? && !persistent_disks.find { |pd| cd[:name] == pd.name }
-            err_msg = "Inconsistent disk DB: Disk #{cd[:name]} exists in plan but not in DB"
-            raise Errors::ProviderError, err_msg
-          end
-        end
-
-        # Attach all persistent disks
-        persistent_disks.each do |pd|
-          Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Attaching disk #{pd.name} [#{pd.id}].")
-          begin
-            attach_volume(vm, pd)
-          rescue Exception => e
-            err_msg = "An error occured while attaching #{pd.name}: #{e}"
-            raise Errors::ProviderError, err_msg
-          end
-        end
-
-        # Create those disks that do not exist in peristent disks DB and
-        # record them into DB
-        config_disks.each do |cd|
-          unless persistent_disks.find { |pd| pd.name == cd[:name] }
-            Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Creating disk #{cd[:name]} [#{cd[:size]}].")
-            size_kb = get_size(cd.merge({:type => :size, :unit => :kilobyte}))
-            volume = vm.volumes.create(:datastore => cd[:pool], :size => size_kb, :mode => 'persistent', :thin => true)
-            # Record volume to a persistent disks database
-            Dopv::log.debug("Provider: Vsphere: Node #{vm.name}: #{__method__}: Recording disk #{cd[:name]} into DB.")
-            disk_db << {
-              :node => vm.name,
-              :name => cd[:name],
-              :id   => volume.filename,
-              :pool => volume.datastore,
-              :size => volume.size*KILO_BYTE
-            }
-            disk_db.save
-          end
-        end
-      end
-
-      def customize(instance, settings)
-        nics = []
-
-        # Settings related to each NIC
-        settings[:interfaces].each do |nic|
-          ip_settings = RbVmomi::VIM::CustomizationIPSettings.new
-          if nic[:ip_address] == 'dhcp'
-            ip_settings.ip = RbVmomi::VIM::CustomizationDhcpIpGenerator.new
+          case ns_config[:domain]
+          when String
+            [ns_config[:domain]]
+          when Array
+            ns_config
           else
-            ip_settings.ip = RbVmomi::VIM::CustomizationFixedIp('ipAddress' => nic[:ip_address])
-            ip_settings.subnetMask = nic[:ip_netmask]
-            ip_settings.gateway = [nic[:ip_gateway]] if nic[:set_gateway]
+            nil
           end
-          nics << ip_settings
+        rescue nil
         end
+      end
 
-        # Global network settings
-        global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new
-        global_ip_settings.dnsServerList = (settings[:dns][:nameserver] rescue nil)
-        global_ip_settings.dnsSuffixList = ([settings[:dns][:domain]] rescue nil)
+      def timezone
+        super || '085'
+      end
+
+      def node_instance_stopped?(node_instance)
+        !node_instance.ready?
+      end
+
+      def create_node_instance
+        ::Dopv::log.info("Node #{nodename}: Creating node instance.")
+        @node_creation_opts['datastore'] = default_pool if default_pool
+        vm = compute_provider.vm_clone(@node_creation_opts.merge(
+          'power_on'  => false,
+          'wait'      => true))
+          compute_provider.servers.get(vm['new_vm']['id'])
+      end
+
+      def customize_node_instance(node_instance)
+        ::Dopv::log.info("Node #{nodename}: Customizing node.")
+        # Settings related to each network interface
+        ip_settings = interfaces_config.collect do |i|
+          ip_setting = ::RbVmomi::VIM::CustomizationIPSettings.new
+          if i[:ip_address] == 'dhcp'
+            ip_setting.ip = ::RbVmomi::VIM::CustomizationDhcpIpGenerator.new
+          else
+            ip_setting.ip = ::RbVmomi::VIM::CustomizationFixedIp('ipAddress' => i[:ip_address])
+            ip_setting.subnetMask = i[:ip_netmask]
+            ip_setting.gateway = [i[:ip_gateway]] if i[:set_gateway]
+          end
+          ip_setting
+        end
 
         # Adapters mapping
-        nic_setting_map = nics.collect { |nic| RbVmomi::VIM::CustomizationAdapterMapping.new('adapter' => nic)}
+        nic_setting_map = ip_settings.collect { |s| RbVmomi::VIM::CustomizationAdapterMapping.new('adapter' => s) }
+
+        # Global network settings
+        global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new(
+          :dnsServerList => nameservers,
+          :dnsSuffixList => searchdomains
+        )
 
         # Identity settings
-        fqdn = settings[:fqdn] || settings[:nodename]
-        hostname = fqdn.split('.').first
-        domainname = fqdn.gsub(/^[^.]+\./, '')
-
-        identity_settings = case GUEST_ID_TO_OS_FAMILY[instance.guest_id.to_sym]
+        identity_settings = case guest_id_to_os_family(node_instance)
                             when :linux
                               RbVmomi::VIM::CustomizationLinuxPrep.new(
-                                :domain   => domainname,
+                                :domain => domainname,
                                 :hostName => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname)
                               )
                             when :windows
-                              raise Errors::ProviderError, "#{__method__}: Missing required customization parameter: organization name" unless settings[:organization_name]
                               password_settings = (RbVmomi::VIM::CustomizationPassword.new(
                                 :plainText => true,
-                                :value     => settings[:credentials][:administrator_password]
+                                :value => administrator_password
                               ) rescue nil)
                               RbVmomi::VIM::CustomizationSysprep.new(
-                                :guiRunOnce     => nil,
-                                :guiUnattended  => RbVmomi::VIM::CustomizationGuiUnattended.new(
-                                  :autoLogon      => false,
+                                :guiRunOnce => nil,
+                                :guiUnattended => RbVmomi::VIM::CustomizationGuiUnattended.new(
+                                  :autoLogon => false,
                                   :autoLogonCount => 1,
-                                  :password       => password_settings,
-                                  :timeZone       => settings[:timezone] || '085'
+                                  :password => password_settings,
+                                  :timeZone => timezone
                               ),
                                 :identification => RbVmomi::VIM::CustomizationIdentification.new(
-                                  :domainAdmin          => nil,
-                                  :domainAdminPassword  => nil,
-                                  :joinDomain           => nil
+                                  :domainAdmin => nil,
+                                  :domainAdminPassword => nil,
+                                  :joinDomain => nil
                               ),
-                                :userData       => RbVmomi::VIM::CustomizationUserData.new(
-                                  :computerName   => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname),
-                                  :fullName       => (settings[:credentials][:administrator_fullname] rescue 'Administrator'),
-                                  :orgName        => settings[:organization_name],
-                                  :productId      => settings[:product_id] || ''
+                                :userData => RbVmomi::VIM::CustomizationUserData.new(
+                                  :computerName => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname),
+                                  :fullName => administrator_fullname,
+                                  :orgName => organization_name,
+                                  :productId => product_id
                               )
                               )
                             else
-                              raise Errors::ProviderError, "#{__method__}: Unsupported guest type"
+                              raise ProviderError, "Unsupported guest OS type"
                             end
 
         custom_spec = RbVmomi::VIM::CustomizationSpec.new(
@@ -281,71 +134,181 @@ module Dopv
           :nicSettingMap => nic_setting_map
         )
         custom_spec.options = RbVmomi::VIM::CustomizationWinOptions.new(
-          :changeSID      => true,
+          :changeSID => true,
           :deleteAccounts => false
-        ) if GUEST_ID_TO_OS_FAMILY[instance.guest_id.to_sym] == :windows
+        ) if guest_id_to_os_family(node_instance) == :windows
 
         custom_spec
-
       end
 
-      def attach_volume(instance, disk_entry)
+      def start_node_instance(node_instance)
+        customization_spec = super(node_instance)
+        customize_node_task(node_instance, customization_spec)
+        node_instance.start
+      end
+
+      def add_node_nics(node_instance)
+        ::Dopv::log.info("Node #{nodename}: Trying to add interfaces.")
+
+        # Remove all interfaces defined by the template
+        remove_node_nics(node_instance)
+
+        # Create interfaces from scratch
+        interfaces_config.each do |i|
+          log_msg = i[:virtual_switch].nil? ?
+            "Node #{nodename}: Creating interface #{i[:name]} in #{i[:network]}." :
+            "Node #{nodename}: Creating interface #{i[:name]} in #{i[:network]} (#{i[:virtual_switch]})."
+          ::Dopv::log.debug(log_msg)
+          attrs = {
+            :name => i[:name],
+            :network => i[:network],
+            :virtualswitch => i[:virtual_switch],
+            :type => 'VirtualVmxnet3'
+          }
+          add_node_nic(node_instance, attrs)
+        end
+      end
+
+      def add_node_volume(node_instance, attrs)
+        config = {
+          :datastore => attrs[:pool],
+          :size => get_size(attrs[:size], :kilobyte),
+          :mode => 'persistent',
+          :thin => true
+        }
+        volume = node_instance.volumes.create(config)
+        node_instance.volumes.reload
+        volume.name = attrs[:name]
+        volume
+      end
+
+      def attach_node_volume(node_instance, volume)
         backing_info = RbVmomi::VIM::VirtualDiskFlatVer2BackingInfo.new(
-          :datastore  => disk_entry.pool,
-          :fileName   => disk_entry.id,
-          :diskMode   => 'persistent'
+          :datastore => volume.pool,
+          :fileName => volume.id,
+          :diskMode => 'persistent'
         )
 
-        unit_number ||= instance.volumes.collect { |v| v.unit_number }.max + 1
         virtual_disk = RbVmomi::VIM::VirtualDisk.new(
-          :controllerKey  => instance.scsi_controller.key,
-          :unitNumber     => unit_number,
-          :key            => -1,
-          :backing        => backing_info,
-          :capacityInKB   => (disk_entry.size/KILO_BYTE).to_i
+          :controllerKey => node_instance.scsi_controller.key,
+          :unitNumber => node_instance.volumes.collect { |v| v.unit_number }.max + 1,
+          :key => -1,
+          :backing => backing_info,
+          :capacityInKB => get_size(volume.size, :kilobyte)
         )
 
         device_spec = RbVmomi::VIM::VirtualDeviceConfigSpec.new(
-          :operation  => :add,
-          :device     => virtual_disk
+          :operation => :add,
+          :device => virtual_disk
         )
 
-        vm_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
+        config_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
 
-        vm_ref = @compute_client.send(:get_vm_ref, instance.id)
-        vm_ref.ReconfigVM_Task(:spec => vm_spec).wait_for_completion
+        node_instance.volumes.reload
+
+        reconfig_node_task(node_instance, config_spec)
       end
 
-      def detach_volume(volume)
-        backing_info = RbVmomi::VIM::VirtualDiskFlatVer2BackingInfo.new(
-          :datastore  => volume.datastore,
-          :fileName   => volume.filename,
-          :diskMode   => volume.mode
-        )
+      def detach_node_volume(node_instance, volume)
+        volume = node_instance.volumes.all.find { |v| v.filename == volume.id }
 
         virtual_disk = RbVmomi::VIM::VirtualDisk.new(
-          :controllerKey  => volume.server.scsi_controller.key,
-          :unitNumber     => volume.unit_number,
-          :key            => volume.key,
-          #:backing        => backing_info,
-          :capacityInKB   => volume.size
+          :controllerKey => volume.server.scsi_controller.key,
+          :unitNumber => volume.unit_number,
+          :key => volume.key,
+          :capacityInKB => volume.size
         )
 
         device_spec = RbVmomi::VIM::VirtualDeviceConfigSpec.new(
-          :operation  => :remove,
-          :device     => virtual_disk
+          :operation => :remove,
+          :device => virtual_disk
         )
 
-        vm_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
+        config_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
 
-        vm_ref = @compute_client.send(:get_vm_ref, volume.server.id)
-        vm_ref.ReconfigVM_Task(:spec => vm_spec).wait_for_completion
+        node_instance.volumes.reload
+
+        reconfig_node_task(node_instance, config_spec)
       end
 
-      def start(instance, customization)
-        vm_ref = @compute_client.send(:get_vm_ref, instance.id)
-        vm_ref.CustomizeVM_Task(:spec => customization).wait_for_completion
-        instance.start
+      def record_node_data_volume(volume)
+        ::Dopv::log.debug("Node #{nodename}: Recording volume #{volume.name} into DB.")
+        volume = {
+          :name => volume.name,
+          :id   => volume.filename,
+          :pool => volume.datastore,
+          :size => volume.size*KILO_BYTE
+        }
+        super(volume)
+      end
+
+      def guest_id_to_os_family(node_instance)
+        # Based on http://pubs.vmware.com/vsphere-50/index.jsp?topic=/com.vmware.wssdk.apiref.doc_50/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
+        lookup_table = {
+          :debian6_64Guest        => :linux,
+          :debian6_Guest          => :linux,
+          :rhel4_64Guest          => :linux,
+          :rhel4Guest             => :linux,
+          :rhel5_64Guest          => :linux,
+          :rhel5Guest             => :linux,
+          :rhel6_64Guest          => :linux,
+          :rhel6Guest             => :linux,
+          :rhel7_64Guest          => :linux,
+          :rhel7Guest             => :linux,
+          :oracleLinux64Guest     => :linux,
+          :oracleLinuxGuest       => :linux,
+          :ubuntu64Guest          => :linux,
+          :ubuntuGuest            => :linux,
+          :windows7_64Guest       => :windows,
+          :windows7Guest          => :windows,
+          :windows7Server64Guest  => :windows,
+          :windows8_64Guest       => :windows,
+          :windows8Guest          => :windows,
+          :windows8Server64Guest  => :windows
+        }
+
+        lookup_table[node_instance.guest_id.to_sym] rescue nil
+      end
+
+      def reconfig_node_task(node_instance, reconfig_spec)
+        node_ref = compute_provider.send(:get_vm_ref, node_instance.id)
+        node_ref.ReconfigVM_Task(:spec => reconfig_spec).wait_for_completion
+      end
+
+      def customize_node_task(node_instance, customization_spec)
+        node_ref = compute_provider.send(:get_vm_ref, node_instance.id)
+        node_ref.CustomizeVM_Task(:spec => customization_spec).wait_for_completion
+      end
+
+      def organization_name
+        raise ProviderError, "Organization name is not defined" unless @node_config[:organization_name]
+        @node_config[:organization_name]
+      end
+
+      def product_id
+        @node_config[:product_id] || ''
+      end
+
+      def provider_expected_pubkey_hash
+        unless @compute_connection_opts && @compute_connection_opts[:vsphere_expected_pubkey_hash]
+          unless @node_config[:provider_apikey]
+            connection = ::RbVmomi::VIM.new(
+              :host     => provider_host,
+              :port     => provider_port,
+              :ssl      => provider_scheme == 'https',
+              :ns       => 'urn:vim25',
+              :rev      => '4.0',
+              :insecure => true
+            )
+            pubkey_hash = ::Digest::SHA2.hexdigest(connection.http.peer_cert.public_key.to_s)
+            connection.close
+            pubkey_hash
+          else
+            @node_config[:provider_apikey]
+          end
+        else
+          @compute_connection_opts[:vsphere_expected_pubkey_hash]
+        end
       end
     end
   end

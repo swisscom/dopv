@@ -1,6 +1,6 @@
 module Dopv
   module Infrastructure
-    class OpenStack < BaseProvider
+    class OpenStack < Base
     end
   end
 end

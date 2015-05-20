@@ -4,7 +4,7 @@ require 'open-uri'
 
 module Dopv
   module Infrastructure
-    class Ovirt < BaseProvider
+    class Ovirt < Base
       def initialize(node_config, data_disks_db)
         super(node_config, data_disks_db)
         
@@ -17,7 +17,7 @@ module Dopv
         }
 
         @node_creation_opts = {
-          :name       => node_name,
+          :name       => nodename,
           :template   => template.id,
           :cores      => cores,
           :memory     => memory,
@@ -26,101 +26,58 @@ module Dopv
           :ha         => keep_ha?,
           :clone      => full_clone?
         }
-
-        #Dopv::log.info("Node #{node_config[:nodename]}: #{__method__}: Trying to deploy.")
-
-
-        begin
-          # Try to get the datacenter ID first.
-          #if node_exist?
-          #  Dopv::log.warn("Node #{node_name}: Already exists, skipping.")
-          #  return
-          #end
-
-          node = compute_provider.servers.find { |s| s.name == node_name }
-          
-          #node = create_node_instance
-          binding.pry
-
-          # Add interfaces
-          #vm = add_interfaces(vm, node_config[:interfaces])
-
-          # Add disks
-          #vm = add_disks(vm, node_config[:disks], data_disks_db)
-
-          # Assign affinnity groups
-          #vm = assign_affinity_groups(vm, node_config[:affinity_groups])
-
-          # Start a node with cloudinit
-          #vm.service.vm_start_with_cloudinit(:id => vm.id, :user_data => cloud_init)
-
-          # Reload the node
-          #vm.reload
-        rescue Exception => e
-          #destroy_vm(vm, data_disks_db)
-          raise ProviderError, "Node #{node_name}: #{e}."
-        end
       end
 
       private
 
-      def wait_for_task_completion(node_instance)
-        node_instance.wait_for { !locked? }
-      end
-      
-      def node_instance_running?(node_instance)
-        !node_instance.stopped?
-      end
-
       def compute_provider
         unless @compute_provider
           super
-          ::Dopv::log.debug("Node #{node_name}: Recreating client with proper datacenter.")
+          ::Dopv::log.debug("Node #{nodename}: Recreating client with proper datacenter.")
           @compute_connection_opts[:ovirt_datacenter] = datacenter[:id]
           @compute_provider = ::Fog::Compute.new(@compute_connection_opts)
         end
         @compute_provider
       end
 
-      def create_node_instance
-        begin
-          # Create node instance
-          node_instance = super
+      def wait_for_task_completion(node_instance)
+        node_instance.wait_for { !locked? }
+      end
 
-          # For each disk, set up wipe after delete flag
-          node_instance.volumes.each do |v|
-            ::Dopv::log.debug("Node #{node_name}: Setting wipe after delete for disk #{v.alias}.")
-            update_node_volume(node_instance, v, {:wipe_after_delete => true})
-          end
-        rescue Exception => e
-          raise ProviderError, "Error while updating volume: #{e}"
+      def create_node_instance
+        node_instance = super
+
+        # For each disk, set up wipe after delete flag
+        node_instance.volumes.each do |v|
+          ::Dopv::log.debug("Node #{nodename}: Setting wipe after delete for disk #{v.alias}.")
+          update_node_volume(node_instance, v, {:wipe_after_delete => true})
         end
 
         node_instance
       end
 
       def customize_node_instance(node_instance)
+        ::Dopv::log.info("Node #{nodename}: Customizing node.")
         customization_opts = {
-          :hostname => node_config[:fqdn] ? node_config[:fqdn] : node_name,
-          :dns => (node_config[:dns][:nameserver] rescue nil),
-          :domain => (node_config[:dns][:domain] rescue nil),
+          :hostname => fqdn,
+          :dns => nameservers,
+          :domain => searchdomains,
           :user => 'root',
-          :password => (node_config[:credentials][:root_password] rescue nil)
-          :ssh_authorized_keys => (node_config[:credentials][:root_ssh_keys] rescue nil)
+          :password => root_password,
+          :ssh_authorized_keys => root_ssh_keys
         }
 
-        nics = []
-        node_config[:interfaces].each do |nc|
+        nics = interfaces_config.collect do |i|
           nic = {}
-          if nc[:ip_address]
-            nic[:nicname] = nc[:name]
-            nic[:ip] = nc[:ip_address]
-            if nc[:ip_address] != 'dhcp' && nc[:ip_address] != 'none'
-              nic[:netmask] = nc[:ip_netmask]
-              nic[:gateway] = nc[:ip_gateway] if nc[:set_gateway]
+          if i[:ip_address]
+            nic[:nicname] = i[:name]
+            nic[:ip] = i[:ip_address]
+            if i[:ip_address] != 'dhcp' && i[:ip_address] != 'none'
+              nic[:netmask] = i[:ip_netmask]
+              nic[:gateway] = i[:ip_gateway] if i[:set_gateway]
             end
+            nic
           end
-          nics << nic
         end
         # Current implementation of cloud-init in rbovirt does not support
         # DHCP/NONE, nor multiple interfaces, hence the first interface for
@@ -131,7 +88,7 @@ module Dopv
       end
 
       def start_node_instance(node_instance)
-        customization_opts = customize_node_instance(node_instance)
+        customization_opts = super(node_instance)
         node_instance.service.vm_start_with_cloudinit(
           :id => node_instance.id,
           :user_data => customization_opts
@@ -145,20 +102,19 @@ module Dopv
 
       def update_node_nic(node_instance, nic, attrs)
         node_instance.update_interface(attrs.merge({:id => nic.id}))
-        wait_for_task_completion(node_instance)
+        node_instance.interfaces.reload
       end
 
       def add_node_nics(node_instance)
-        ::Dopv::log.info("Node #{node_name}: Trying to add interfaces.")
-        
-        # Remove all interfaces defined by the template
-        remove_node_nics(node_instance)
+        ::Dopv::log.info("Node #{nodename}: Trying to add interfaces.")
 
-        # Create network interfaces. In this step, interfaces are not assigned. This step
-        # is used for MAC addresses reservation
+        # Remove all interfaces defined by the template
+        remove_node_nics(node_instance) { |n, i| n.destroy_interface(:id => i.id) }
+
+        # Reserve MAC addresses
         (1..interfaces_config.size).each do |i|
           name = "tmp#{i}"
-          ::Dopv::log.debug("Node #{node_name}: Creating interface #{name}.")
+          ::Dopv::log.debug("Node #{nodename}: Creating interface #{name}.")
           attrs = {
             :name => name,
             :network_name => 'rhevm',
@@ -170,27 +126,22 @@ module Dopv
 
         # Rearrange interfaces by their MAC addresses and assign them into
         # appropriate networks
-        interfaces_config.reverse!
+        ic = interfaces_config.reverse
         node_instance.interfaces.sort_by do |n| n.mac
-          cfg = interfaces_config.pop
-          ::Dopv::log.debug("Node #{node_name}: Configuring interface #{n.name} (#{n.mac}) as #{cfg[:name]} in #{cfg[:network]}.")
+          i = ic.pop
+          ::Dopv::log.debug("Node #{nodename}: Configuring interface #{n.name} (#{n.mac}) as #{i[:name]} in #{i[:network]}.")
           attrs = {
-            :name => cfg[:name],
-            :network_name => cfg[:network],
+            :name => i[:name],
+            :network_name => i[:network],
           }
           update_node_nic(node_instance, n, attrs)
         end
       end
 
-      def remove_node_nics(node_instance)
-        ::Dopv::log.debug("Node #{node_name}: Removing interfaces defined by template.")
-        node_instance.interfaces.each { |i| node_instance.destroy_interface(:id => i.id) } rescue nil
-        node_instance.interfaces.reload
-      end
-
       def add_node_affinity(node_instance, name)
         affinity_group = compute_provider.affinity_groups.find { |g| g.name == name }
         raise ProviderError, "No such affinity group #{name}" unless affinity_group
+        ::Dopv::log.info("Node #{nodename}: Adding node to affinity group #{name}.")
         node_instance.add_to_affinity_group(:id => affinity_group.id)
       end
 
@@ -198,28 +149,34 @@ module Dopv
         storage_domain = compute_provider.storage_domains.find { |d| d.name == attrs[:pool] }
         raise ProviderError, "No such storage domain #{attrs[:storage_domain]}" unless storage_domain
 
-        attrs[:alias] = attrs[:name]
-        attrs[:size] = get_size(attrs[:size])
-        attrs[:storage_domain] = storage_domain.id
-        attrs.delete_if { |k,v| k == :name || k == :pool }
+        config = {
+          :alias => attrs[:name],
+          :size => get_size(attrs[:size]),
+          :bootable => 'false',
+          :wipe_after_delete => 'true',
+          :storage_domain => storage_domain.id
+        }
 
-        node_instance.add_volume(attrs.merge(:bootable => 'false', :wipe_after_delete => 'true'))
+        node_instance.add_volume(config)
         wait_for_task_completion(node_instance)
-        node_instance.volumes.find { |v| v.alias == attrs[:alias] }
+        # This call updates the list of volumes -> no need to call reload.
+        node_instance.volumes.find { |v| v.alias == config[:alias] }
       end
       
       def attach_node_volume(node_instance, volume)
         node_instance.attach_volume(:id => volume.id)
         wait_for_task_completion(node_instance)
+        node_instance.volumes.reload
       end
 
       def detach_node_volume(node_instance, volume)
         node_instance.detach_volume(:id => volume.id)
         wait_for_task_completion(node_instance)
+        node_instance.volumes.reload
       end
       
-      def record_node_volume(volume)
-        ::Dopv::log.debug("Node #{node_name}: Recording volume #{[:name]} into DB.")
+      def record_node_data_volume(volume)
+        ::Dopv::log.debug("Node #{nodename}: Recording volume #{volume.alias} into DB.")
         volume = {
           :name => volume.alias,
           :id   => volume.id,
