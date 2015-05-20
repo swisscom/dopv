@@ -1,16 +1,7 @@
-GIT
-  remote: https://github.com/abenari/rbovirt.git
-  revision: f4ff2b8daf893bb49769d3d72fb3d309fbada39c
-  ref: f4ff2b8daf893bb49769d3d72fb3d309fbada39c
-  specs:
-    rbovirt (0.1.0)
-      nokogiri
-      rest-client (> 1.7.0)
-
 PATH
   remote: .
   specs:
-    dopv (0.0.15)
+    dopv (0.1.0)
       colorize (~> 0.7.5)
       fog (~> 1.29.0)
       json (~> 1.8)
@@ -151,6 +142,9 @@ GEM
       debugger (~> 1.3)
       pry (>= 0.9.10, < 0.11.0)
     rake (10.4.2)
+    rbovirt (0.1.0)
+      nokogiri
+      rest-client (> 1.7.0)
     rbvmomi (1.8.2)
       builder
       nokogiri (>= 1.4.1)
@@ -187,5 +181,4 @@ DEPENDENCIES
   pry
   pry-debugger
   rake
-  rbovirt (= 0.1.0)!
   rspec

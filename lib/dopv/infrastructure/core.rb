@@ -42,6 +42,8 @@ module Dopv
         :storage  => 10737418240
       }
     }
+
+    TMP = '/tmp'
     
     def self.supported?(object)
       case object
@@ -56,13 +58,10 @@ module Dopv
       end
     end
 
-    def self.bootstrap(node_config, disk_db)
-      # Works only for Ruby 2.x and above
-      #Object.const_get("Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node_config[:provider].to_sym]}::Node").bootstrap(node_config, disk_db)
-      # Works also in Ruby 1.9x
-      klass_name = "Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node_config[:provider].to_sym]}::Node"
+    def self.bootstrap_node(node_config, data_disk_db)
+      klass_name = "Dopv::Infrastructure::#{TYPES_TO_CLASS_NAMES[node_config[:provider].to_sym]}"
       klass = klass_name.split('::').inject(Object) {|res, i| res.const_get(i)}
-      klass.bootstrap(node_config, disk_db)
+      klass.bootstrap_node(node_config, data_disk_db)
     end
   end
 end
