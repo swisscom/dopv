@@ -14,7 +14,7 @@ module Dopv
           :vsphere_password             => provider_password,
           :vsphere_server               => provider_host,
           :vsphere_port                 => provider_port,
-          :vsphere_expected_pubkey_hash => provider_expected_pubkey_hash
+          :vsphere_expected_pubkey_hash => provider_pubkey_hash
         }
 
         @node_creation_opts = {
@@ -289,9 +289,9 @@ module Dopv
         @node_config[:product_id] || ''
       end
 
-      def provider_expected_pubkey_hash
+      def provider_pubkey_hash
         unless @compute_connection_opts && @compute_connection_opts[:vsphere_expected_pubkey_hash]
-          unless @node_config[:provider_apikey]
+          unless @node_config[:provider_pubkey_hash]
             connection = ::RbVmomi::VIM.new(
               :host     => provider_host,
               :port     => provider_port,
@@ -304,7 +304,7 @@ module Dopv
             connection.close
             pubkey_hash
           else
-            @node_config[:provider_apikey]
+            @node_config[:provider_pubkey_hash]
           end
         else
           @compute_connection_opts[:vsphere_expected_pubkey_hash]
