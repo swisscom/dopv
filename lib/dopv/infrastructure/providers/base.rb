@@ -177,7 +177,13 @@ module Dopv
       end
 
       def template(filters={})
-        @template ||= compute_provider.templates.all(filters).find { |t| t.name == @node_config[:image] }
+        @template ||= if compute_provider.respond_to?(:templates)
+                         compute_provider.templates.all(filters).find { |t| t.name == @node_config[:image] }
+                       elsif compute_provider.respond_to?(:images)
+                         compute_provider.images.all(filters).find { |t| t.name == @node_config[:image] }
+                       else
+                         raise ProviderError, "The provider does not to have template/image collection"
+                       end
         raise ProviderError, "No such template #{@node_config[:image]}" unless @template
         @template
       end
