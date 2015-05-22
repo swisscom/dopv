@@ -189,6 +189,10 @@ module Dopv
               raise PlanError, error_msg unless v.is_a?(String)
             when 'default_pool'
               raise PlanError, error_msg unless v.is_a?(String)
+            when 'tenant'
+              raise PlanError, error_msg unless v.is_a?(String)
+            when 'tenant_id'
+              raise PlanError, error_msg unless v.is_a?(String)
             else
               raise PlanError, error_msg
             end

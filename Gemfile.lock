@@ -3,7 +3,7 @@ PATH
   specs:
     dopv (0.1.0)
       colorize (~> 0.7.5)
-      fog (~> 1.29.0)
+      fog (~> 1.30.0)
       json (~> 1.8)
       rbovirt (~> 0.1.0)
       rbvmomi (~> 1.8.2)
@@ -29,12 +29,13 @@ GEM
     excon (0.45.3)
     fission (0.5.0)
       CFPropertyList (~> 2.2)
-    fog (1.29.0)
+    fog (1.30.0)
       fog-atmos
       fog-aws (~> 0.0)
       fog-brightbox (~> 0.4)
       fog-core (~> 1.27, >= 1.27.4)
       fog-ecloud
+      fog-google (>= 0.0.2)
       fog-json
       fog-local
       fog-powerdns (>= 0.1.1)
@@ -54,7 +55,7 @@ GEM
     fog-atmos (0.1.0)
       fog-core
       fog-xml
-    fog-aws (0.1.2)
+    fog-aws (0.2.2)
       fog-core (~> 1.27)
       fog-json (~> 1.0)
       fog-xml (~> 0.1)
@@ -72,6 +73,10 @@ GEM
       net-ssh (>= 2.1.3)
     fog-ecloud (0.1.1)
       fog-core
+      fog-xml
+    fog-google (0.0.5)
+      fog-core
+      fog-json
       fog-xml
     fog-json (1.0.1)
       fog-core (~> 1.0)
@@ -100,7 +105,7 @@ GEM
     fog-serverlove (0.1.2)
       fog-core
       fog-json
-    fog-softlayer (0.4.5)
+    fog-softlayer (0.4.6)
       fog-core
       fog-json
     fog-storm_on_demand (0.1.1)
