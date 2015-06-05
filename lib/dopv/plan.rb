@@ -50,20 +50,22 @@ module Dopv
           end
         end
         d['infrastructure_properties'].each { |k, v| node[k.to_sym] = v } if d['infrastructure_properties']
-        d['interfaces'].each do |k, v|
-          interface = {}
-          interface[:name] = k
-          interface[:network] = v['network']
-          if v['ip']
-            interface[:ip_address] = v['ip']
-            interface[:ip_netmask] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_netmask']
-            if infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
-              interface[:ip_gateway] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
+        if d['interfaces']
+          d['interfaces'].each do |k, v|
+            interface = {}
+            interface[:name] = k
+            interface[:network] = v['network']
+            if v['ip']
+              interface[:ip_address] = v['ip']
+              interface[:ip_netmask] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_netmask']
+              if infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
+                interface[:ip_gateway] = infrastructures[d['infrastructure']]['networks'][v['network']]['ip_defgw']
+              end
             end
+            interface[:set_gateway] = v['set_gateway'] == false ? v['set_gateway'] : true
+            interface[:virtual_switch] = v['virtual_switch'] if v['virtual_switch']
+            (node[:interfaces] ||= []) << interface
           end
-          interface[:set_gateway] = v['set_gateway'] == false ? v['set_gateway'] : true
-          interface[:virtual_switch] = v['virtual_switch'] if v['virtual_switch']
-          (node[:interfaces] ||= []) << interface
         end
         # Add affinity groups
         node[:affinity_groups] = d['affinity_groups'] if d['affinity_groups']
@@ -148,8 +150,7 @@ module Dopv
       # must exist in infrastructures section of the @plan.
       @plan['nodes'].each do |n, d|
         error_msg = "Node #{n}: Invalid node definition"
-        if !(d.is_a?(Hash) && d['infrastructure'].is_a?(String) &&
-             d['image'].is_a?(String) && d['interfaces'].is_a?(Hash))
+        if !(d.is_a?(Hash) && d['infrastructure'].is_a?(String))
           raise PlanError, error_msg
         end
         raise PlanError, error_msg if d['full_clone'] && d['full_clone'] != true && d['full_clone'] != false
@@ -200,31 +201,33 @@ module Dopv
         end
 
         # Networks
-        d['interfaces'].each do |i, v|
-          if !v.is_a?(Hash) || !v['network'].is_a?(String)
-            raise PlanError, "Node #{n}: Invalid interface definition"
-          end
-          if v['virtual_switch'] && !v['virtual_switch'].is_a?(String)
-            raise PlanError,  "Node #{n}: Invalid virtual switch definition"
-          end
-          unless @plan['infrastructures'][d['infrastructure']]['networks'].has_key?(v['network'])
-            raise PlanError, "Node #{n}: Invalid network pointer #{v['network']}"
-          end
-          if v['ip'] && v['ip'] != "dhcp" && v['ip'] != "none"
-            error_msg = "Node #{n}: Invalid IP definition"
-            begin
-              ip = IPAddr.new(v['ip'])
-              ip_from   = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['from'])
-              ip_to     = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['to'])
-              ip_defgw  = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_defgw'] || '0.0.0.0')
-            rescue
-              raise PlanError, error_msg
+        if d.has_key?('interfaces')
+          d['interfaces'].each do |i, v|
+            if !v.is_a?(Hash) || !v['network'].is_a?(String)
+              raise PlanError, "Node #{n}: Invalid interface definition"
             end
-            if ip < ip_from || ip > ip_to || ip == ip_defgw
-              raise PlanError, error_msg
+            if v['virtual_switch'] && !v['virtual_switch'].is_a?(String)
+              raise PlanError,  "Node #{n}: Invalid virtual switch definition"
             end
-            if v['set_gateway'] && (v['set_gateway'] != true && v['set_gateway'] != false)
-              raise PlanError, "Node #{n}: set_gateway must be of boolean type"
+            unless @plan['infrastructures'][d['infrastructure']]['networks'].has_key?(v['network'])
+              raise PlanError, "Node #{n}: Invalid network pointer #{v['network']}"
+            end
+            if v['ip'] && v['ip'] != "dhcp" && v['ip'] != "none"
+              error_msg = "Node #{n}: Invalid IP definition"
+              begin
+                ip = IPAddr.new(v['ip'])
+                ip_from   = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['from'])
+                ip_to     = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['to'])
+                ip_defgw  = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_defgw'] || '0.0.0.0')
+              rescue
+                raise PlanError, error_msg
+              end
+              if ip < ip_from || ip > ip_to || ip == ip_defgw
+                raise PlanError, error_msg
+              end
+              if v['set_gateway'] && (v['set_gateway'] != true && v['set_gateway'] != false)
+                raise PlanError, "Node #{n}: set_gateway must be of boolean type"
+              end
             end
           end
         end

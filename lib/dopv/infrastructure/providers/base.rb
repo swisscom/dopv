@@ -177,6 +177,7 @@ module Dopv
       end
 
       def template(filters={})
+        raise ProviderError, "No template defined" unless @node_config[:image]
         @template ||= if compute_provider.respond_to?(:templates)
                          compute_provider.templates.all(filters).find { |t| t.name == @node_config[:image] }
                        elsif compute_provider.respond_to?(:images)
