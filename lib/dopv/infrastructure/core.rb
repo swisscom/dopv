@@ -5,13 +5,15 @@ module Dopv
       :rhev       => 'ovirt',
       :openstack  => 'openstack',
       :vsphere    => 'vsphere',
-      :vmware     => 'vsphere'
+      :vmware     => 'vsphere',
+      :baremetal  => 'baremetal'
     }
 
     TYPES_TO_CLASS_NAMES = {
       :ovirt      => 'Ovirt',
       :openstack  => 'OpenStack',
-      :vsphere    => 'Vsphere'
+      :vsphere    => 'Vsphere',
+      :baremetal  => 'BareMetal'
     }
 
     # Based on http://docs.openstack.org/openstack-ops/content/flavors.html

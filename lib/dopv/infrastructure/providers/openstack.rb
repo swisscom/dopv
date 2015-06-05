@@ -75,10 +75,11 @@ module Dopv
       def add_network_port(attrs)
         network_provider.ports.create(
           :name => "#{nodename}-#{attrs[:network]}-#{attrs[:name]}",
-          :network_id => subnet(attrs[:network]).network_id
+          :network_id => subnet(attrs[:network]).network_id,
           :fixed_ips => [
             { :subnet_id => subnet(attrs[:network]).id, :ip_address => attrs[:ip_address] }
           ]
+        )
       end
 
       def add_network_ports
