@@ -23,9 +23,7 @@ module Dopv
           :name         => nodename,
           :image_ref    => template.id,
           :flavor_ref   => flavor.id,
-          #:nics         => [ { :net_id => "f0c5d190-a0ab-49db-a5c8-47267051974a" } ]
-          #:nics         => [ {:net_id => "a7a982ec-e1ae-4dac-842c-cd79e3e98f6b", :v4_fixed_ip => "10.10.0.223" },  { :net_id => "f0c5d190-a0ab-49db-a5c8-47267051974a", :v4_fixed_ip => "10.0.1.223" } ],
-#         :nics         => [ { :port_id => "a32c7941-2121-401e-ae73-613f7448c4cb" }, { :port_id => "c91b7806-452e-4253-8c6b-4b0009b391d7" } ]
+          :nics         => add_network_ports
         }
       end
 
@@ -52,10 +50,16 @@ module Dopv
         @flavor
       end
 
+      def network(name, filters={})
+        net = network_provider.networks(filters).find { |n| n.name == name || n.id == name }
+        raise ProviderError, "No such network #{name}" unless net
+        net
+      end
+
       def subnet(name, filters={})
-        sub_net = network_provider.subnets(filters).find { |s| s.name == name }
-        raise ProviderError, "No such subnet #{name}" unless sub_net
-        sub_net
+        net = network_provider.subnets(filters).find { |s| s.name == name || s.id == name }
+        raise ProviderError, "No such subnetwork #{name}" unless net
+        net
       end
 
       def node_instance_stopped?(node_instance)
@@ -69,20 +73,50 @@ module Dopv
         instance.reload
       end
 
+      def destroy_node_instance(node_instance, destroy_data_volumes=false)
+        super(node_instance, destroy_data_volumes)
+
+        ::Dopv::log.warn("Node #{nodename}: Destroying network ports.")
+        remove_network_ports
+      end
+
+      def start_node_instance(node_instance)
+      end
+
       def add_node_data_volumes(node_instance)
       end
 
       def add_network_port(attrs)
-        network_provider.ports.create(
-          :name => "#{nodename}-#{attrs[:network]}-#{attrs[:name]}",
-          :network_id => subnet(attrs[:network]).network_id,
-          :fixed_ips => [
-            { :subnet_id => subnet(attrs[:network]).id, :ip_address => attrs[:ip_address] }
-          ]
-        )
+        ::Dopv::log.info("Node #{nodename}: Adding port #{attrs[:name]}.")
+        network_provider.ports.create(attrs)
       end
 
       def add_network_ports
+        ports_config = {}
+        interfaces_config.each do |i|
+          s = subnet(i[:network])
+          port_name = "#{nodename}_#{s.network_id}"
+          if ports_config.has_key?(port_name)
+              ports_config[port_name][:fixed_ips] << fixed_ip(s.id, i[:ip_address])
+          else
+            ports_config[port_name] = {
+              :network_id => s.network_id,
+              :fixed_ips => [fixed_ip(s.id, i[:ip_address])]
+            }
+          end
+        end
+        @network_ports = ports_config.map { |k,v| add_network_port(v.merge(:name => k)) }
+        @network_ports.collect { |p| {:port_id => p.id} }
+      end
+
+      def remove_network_ports
+        @network_ports.each { |p| p.destroy rescue nil }
+        @network_ports = nil
+      end
+
+      def fixed_ip(subnet_id, ip_address)
+        ret = {:subnet_id => subnet_id}
+        %w(dhcp none).include?(ip_address) ? ret : ret.merge(:ip_address => ip_address)
       end
     end
   end
