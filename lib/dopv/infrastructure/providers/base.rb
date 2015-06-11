@@ -289,10 +289,7 @@ module Dopv
       end
 
       def add_node_volume(node_instance, attrs)
-        volume = node_instance.volumes.create(attrs)
-        wait_for_task_completion(node_instance)
-        node_instance.volumes.reload
-        volume
+        node_instance.volumes.create(attrs)
       end
 
       def update_node_volume(node_instance, volume, attrs)
