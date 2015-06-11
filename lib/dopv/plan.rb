@@ -237,7 +237,7 @@ module Dopv
           raise PlanError, "Node #{n}: Invalid disk definition" unless d['disks'].is_a?(Array)
           d['disks'].each do |dsk|
             if !dsk.is_a?(Hash) || !dsk['name'].is_a?(String) ||
-               (!dsk['pool'].is_a?(String) &&
+               (!(dsk['pool'].is_a?(String) || dsk['pool'].nil?) &&
                 !d['infrastructure_properties']['default_pool'].is_a?(String)
                ) || !dsk['size'].is_a?(String) || dsk['size'] !~ /[1-9]*[MGTmgt]/
               raise PlanError, "Node #{n}: Invalid disk name, pool or size definition"

@@ -18,12 +18,12 @@ module Dopv
         }
 
         @network_connection_opts = @compute_connection_opts
+        @volume_connection_opts  = @compute_connection_opts
 
         @node_creation_opts = {
           :name         => nodename,
           :image_ref    => template.id,
           :flavor_ref   => flavor.id,
-          :nics         => add_network_ports
         }
       end
 
@@ -32,6 +32,11 @@ module Dopv
       def network_provider
         Dopv::log.info("Node #{nodename}: Creating network provider.") unless @network_provider
         @network_provider ||= @network_connection_opts ? ::Fog::Network.new(@network_connection_opts) : nil
+      end
+
+      def volume_provider
+        Dopv::log.info("Node #{nodename}: Creating volume provider.") unless @volume_provider
+        @volume_provider ||= @volume_connection_opts ? ::Fog::Volume.new(@volume_connection_opts) : nil
       end
 
       def provider_tenant
@@ -66,32 +71,72 @@ module Dopv
         !node_instance.ready?
       end
 
+      def wait_for_task_completion(instance)
+        instance.wait_for { ready? }
+      end
+
       def create_node_instance
         Dopv::log.info("Node #{nodename}: Creating node instance.")
+        @node_creation_opts[:nics] = add_network_ports
+        Dopv::log.debug("Node #{nodename}: Spawning node instance.")
         instance = compute_provider.servers.create(@node_creation_opts)
-        instance.wait_for { ready? }
+        wait_for_task_completion(instance)
         instance.reload
       end
 
       def destroy_node_instance(node_instance, destroy_data_volumes=false)
         super(node_instance, destroy_data_volumes)
-
-        ::Dopv::log.warn("Node #{nodename}: Destroying network ports.")
         remove_network_ports
       end
 
       def start_node_instance(node_instance)
       end
 
-      def add_node_data_volumes(node_instance)
+      def add_node_volume(node_instance, attrs)
+        config = {
+          :name => attrs[:name],
+          :display_name => attrs[:name],
+          :size => get_size(attrs[:size], :gigabyte),
+          :volume_type => attrs[:pool],
+          :description => attrs[:name]
+        }
+        volume = super(volume_provider, config)
+        volume.wait_for { ready? }
+        attach_node_volume(node_instance, volume.reload)
+        volume.reload
+      end
+
+      def attach_node_volume(node_instance, volume)
+        volume_instance = node_instance.volumes.all.find { |v| v.id = volume.id }
+        node_instance.attach_volume(volume_instance.id, nil)
+        volume_instance.wait_for { volume_instance.status.downcase == "in-use" }
+        node_instance.volumes.reload
+      end
+
+      def detach_node_volume(node_instance, volume)
+        node_instance.detach_volume(volume.id)
+        volume.wait_for { ready? }
+        node_instance.volumes.reload
+      end
+
+      def record_node_data_volume(volume)
+        ::Dopv::log.debug("Node #{nodename}: Recording volume #{volume.display_name} into DB.")
+        volume = {
+          :name => volume.display_name,
+          :id   => volume.id,
+          :pool => volume.volume_type == 'None' ? nil : volume.volume_type,
+          :size => volume.size*GIGA_BYTE
+        }
+        super(volume)
       end
 
       def add_network_port(attrs)
-        ::Dopv::log.info("Node #{nodename}: Adding port #{attrs[:name]}.")
+        ::Dopv::log.debug("Node #{nodename}: Adding network port #{attrs[:name]}.")
         network_provider.ports.create(attrs)
       end
 
       def add_network_ports
+        ::Dopv::log.info("Node #{nodename}: Adding network ports.")
         ports_config = {}
         interfaces_config.each do |i|
           s = subnet(i[:network])
@@ -110,8 +155,11 @@ module Dopv
       end
 
       def remove_network_ports
-        @network_ports.each { |p| p.destroy rescue nil }
-        @network_ports = nil
+        ::Dopv::log.warn("Node #{nodename}: Removing network ports.")
+        if @network_ports
+          @network_ports.each { |p| p.destroy rescue nil }
+          @network_ports = nil
+        end
       end
 
       def fixed_ip(subnet_id, ip_address)
