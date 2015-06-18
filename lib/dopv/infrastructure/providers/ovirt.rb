@@ -154,8 +154,10 @@ module Dopv
           :size => get_size(attrs[:size]),
           :bootable => 'false',
           :wipe_after_delete => 'true',
-          :storage_domain => storage_domain.id
+          :storage_domain => storage_domain.id,
         }
+
+        config.merge!(:format => 'raw', :sparse => 'false') unless thin_provisioned?(attrs)
 
         node_instance.add_volume(config)
         wait_for_task_completion(node_instance)

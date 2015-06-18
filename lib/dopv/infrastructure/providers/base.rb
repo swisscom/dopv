@@ -99,6 +99,10 @@ module Dopv
         @node_config[:full_clone].nil? ? true : @node_config[:full_clone]
       end
 
+      def thin_provisioned?(volume)
+        volume[:thin].nil? ? true : volume[:thin]
+      end
+
       def default_pool
         @node_config[:default_pool]
       end
