@@ -29,6 +29,10 @@ module Dopv
 
       private
 
+      def nameservers
+        ns_config[:nameserver].join(" ") rescue nil
+      end
+
       def network_provider
         Dopv::log.info("Node #{nodename}: Creating network provider.") unless @network_provider
         @network_provider ||= @network_connection_opts ? ::Fog::Network.new(@network_connection_opts) : nil
@@ -77,10 +81,22 @@ module Dopv
 
       def create_node_instance
         Dopv::log.info("Node #{nodename}: Creating node instance.")
+
         @node_creation_opts[:nics] = add_network_ports
+        @node_creation_opts[:user_data_encoded] = [cloud_config].pack('m')
+        #@node_creation_opts[:metadata] = { "network_config" => %Q{ content_path : /content/0000, path : /etc/network/interfaces}}
+        #@node_creation_opts[:metadata] = { "network-interfaces" => network_config }
+        #@node_creation_opts[:personality] = [
+        #  {
+        #    :path => '/etc/network/interfaces',
+        #    :contents => network_config
+        #  }
+        #]
+
         Dopv::log.debug("Node #{nodename}: Spawning node instance.")
         instance = compute_provider.servers.create(@node_creation_opts)
         wait_for_task_completion(instance)
+
         instance.reload
       end
 
@@ -163,8 +179,60 @@ module Dopv
       end
 
       def fixed_ip(subnet_id, ip_address)
-        ret = {:subnet_id => subnet_id}
-        %w(dhcp none).include?(ip_address) ? ret : ret.merge(:ip_address => ip_address)
+        rval = { :subnet_id => subnet_id }
+        %w(dhcp none).include?(ip_address) ? rval : rval.merge(:ip_address => ip_address)
+      end
+
+      def cloud_config
+        config = "#cloud-config\n"  \
+          "hostname: #{hostname}\n" \
+          "fqdn: #{fqdn}\n"         \
+          "ssh_pwauth: True\n"
+
+        if root_password
+          config <<                       \
+            "chpasswd:\n"                 \
+            "  list: |\n"                 \
+            "    root:#{root_password}\n" \
+            "  expire: False\n"
+        end
+
+        unless root_ssh_keys.empty?
+          config <<                       \
+            "users:\n"                    \
+            "  - name: root\n"            \
+            "    ssh_authorized_keys:\n"
+          root_ssh_keys.each { |k| config << "      - #{k}\n" }
+        end
+
+        config
+      end
+
+      def network_config
+        config = ""
+        if interfaces_config
+          interfaces_config.each do |i|
+            config <<               \
+              "auto #{i[:name]}\n"  \
+              "iface #{i[:name]} inet "
+            config << case i[:ip_address]
+                      when 'dhcp'
+                        "dhcp\n"
+                      when 'none'
+                        "none\n"
+                      else
+                        nic =                             \
+                          "static\n"                      \
+                          "  address #{i[:ip_address]}\n" \
+                          "  netmask #{i[:ip_netmask]}\n"
+                        nic << "  gateway #{i[:ip_gateway]}\n" if i[:set_gateway]
+                      end
+            config << "  dns-nameservers #{nameservers}\n" if nameservers
+            config << "  dns-search #{searchdomains}\n" if searchdomains
+          end
+        end
+
+        config
       end
     end
   end
