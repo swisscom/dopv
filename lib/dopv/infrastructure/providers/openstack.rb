@@ -24,6 +24,7 @@ module Dopv
           :name         => nodename,
           :image_ref    => template.id,
           :flavor_ref   => flavor.id,
+          :config_drive => true
         }
       end
 
@@ -197,7 +198,7 @@ module Dopv
             "  expire: False\n"
         end
 
-        unless root_ssh_keys.empty?
+        if root_ssh_keys
           config <<                       \
             "users:\n"                    \
             "  - name: root\n"            \
@@ -225,7 +226,7 @@ module Dopv
                           "static\n"                      \
                           "  address #{i[:ip_address]}\n" \
                           "  netmask #{i[:ip_netmask]}\n"
-                        nic << "  gateway #{i[:ip_gateway]}\n" if i[:set_gateway]
+                        nic << (i[:set_gateway] ? "  gateway #{i[:ip_gateway]}\n" : "")
                       end
             config << "  dns-nameservers #{nameservers}\n" if nameservers
             config << "  dns-search #{searchdomains}\n" if searchdomains
