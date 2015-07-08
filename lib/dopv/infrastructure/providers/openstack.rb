@@ -85,14 +85,6 @@ module Dopv
 
         @node_creation_opts[:nics] = add_network_ports
         @node_creation_opts[:user_data_encoded] = [cloud_config].pack('m')
-        #@node_creation_opts[:metadata] = { "network_config" => %Q{ content_path : /content/0000, path : /etc/network/interfaces}}
-        #@node_creation_opts[:metadata] = { "network-interfaces" => network_config }
-        #@node_creation_opts[:personality] = [
-        #  {
-        #    :path => '/etc/network/interfaces',
-        #    :contents => network_config
-        #  }
-        #]
 
         Dopv::log.debug("Node #{nodename}: Spawning node instance.")
         instance = compute_provider.servers.create(@node_creation_opts)
@@ -206,32 +198,9 @@ module Dopv
           root_ssh_keys.each { |k| config << "      - #{k}\n" }
         end
 
-        config
-      end
-
-      def network_config
-        config = ""
-        if interfaces_config
-          interfaces_config.each do |i|
-            config <<               \
-              "auto #{i[:name]}\n"  \
-              "iface #{i[:name]} inet "
-            config << case i[:ip_address]
-                      when 'dhcp'
-                        "dhcp\n"
-                      when 'none'
-                        "none\n"
-                      else
-                        nic =                             \
-                          "static\n"                      \
-                          "  address #{i[:ip_address]}\n" \
-                          "  netmask #{i[:ip_netmask]}\n"
-                        nic << (i[:set_gateway] ? "  gateway #{i[:ip_gateway]}\n" : "")
-                      end
-            config << "  dns-nameservers #{nameservers}\n" if nameservers
-            config << "  dns-search #{searchdomains}\n" if searchdomains
-          end
-        end
+        config <<
+          "runcmd:\n" \
+          "  - service network restart\n"
 
         config
       end
