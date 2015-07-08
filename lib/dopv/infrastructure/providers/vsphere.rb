@@ -34,7 +34,7 @@ module Dopv
       end
 
       def dest_folder
-        @node_config[:dest_folder]
+        @node_config[:dest_folder] || ''
       end
 
       def searchdomains
@@ -65,7 +65,7 @@ module Dopv
         vm = compute_provider.vm_clone(@node_creation_opts.merge(
           'power_on'  => false,
           'wait'      => true))
-          compute_provider.servers.get(vm['new_vm']['id'])
+        compute_provider.servers.get(vm['new_vm']['id'])
       end
 
       def customize_node_instance(node_instance)
@@ -161,6 +161,7 @@ module Dopv
           ::Dopv::log.debug(log_msg)
           attrs = {
             :name => i[:name],
+            :datacenter => node_instance.datacenter,
             :network => i[:network],
             :virtualswitch => i[:virtual_switch],
             :type => 'VirtualVmxnet3'
