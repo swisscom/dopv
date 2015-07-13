@@ -24,22 +24,22 @@ module Dopv
         node = {}
         # Infrastructure provider definitions
         node[:provider] = Infrastructure::SUPPORTED_TYPES[infrastructures[d['infrastructure']]['type'].to_sym]
-        node[:provider_username]  = infrastructures[d['infrastructure']]['credentials']['username']
-        node[:provider_password]  = infrastructures[d['infrastructure']]['credentials']['password']
-        node[:provider_pubkey_hash]    = infrastructures[d['infrastructure']]['credentials']['provider_pubkey_hash']
-        node[:provider_endpoint]  = infrastructures[d['infrastructure']]['endpoint']
+        node[:provider_username] = infrastructures[d['infrastructure']]['credentials']['username'] rescue nil
+        node[:provider_password] = infrastructures[d['infrastructure']]['credentials']['password'] rescue nil
+        node[:provider_pubkey_hash] = infrastructures[d['infrastructure']]['credentials']['provider_pubkey_hash'] rescue nil
+        node[:provider_endpoint] = infrastructures[d['infrastructure']]['endpoint'] rescue nil
         # Node definitions
-        node[:nodename]           = n
-        node[:fqdn]               = d['fqdn']
-        node[:image]              = d['image']
-        node[:flavor]             = d['flavor'] if d['flavor']
-        node[:cores]              = d['cores'] if d['cores']
-        node[:memory]             = d['memory'] if d['memory']
-        node[:storage]            = d['storage'] if d['storage']
-        node[:full_clone]         = d['full_clone'] unless d['full_clone'].nil?
-        node[:product_id]        = d['product_id'] if d['product_id']
-        node[:organization_name]  = d['organization_name'] if d['organization_name']
-        node[:timezone]           = d['timezone'] if d['timezone']
+        node[:nodename] = n
+        node[:fqdn] = d['fqdn']
+        node[:image] = d['image']
+        node[:flavor] = d['flavor']
+        node[:cores] = d['cores']
+        node[:memory] = d['memory']
+        node[:storage] = d['storage']
+        node[:full_clone] = d['full_clone']
+        node[:product_id] = d['product_id']
+        node[:organization_name] = d['organization_name']
+        node[:timezone] = d['timezone']
         # Create an empty disks array
         node[:disks] = []
         # Add disks if any
@@ -113,31 +113,34 @@ module Dopv
         raise PlanError, "Infrastructures and nodes must be Hash"
       end
       @plan['infrastructures'].each do |i, d|
-        raise PlanError, "Infrastructure #{i}: Unsupported type" unless Infrastructure.supported?(d)
-        raise PlanError, "Infrastructure #{i}: Networks definition missing" unless d.has_key?('networks')
-        d['networks'].each_value do |v|
-          error_msg = "Infrastructure #{i}: Invalid network definition"
-          case v
-          when nil # No IP configuration
-            Dopv::log.warn("No IP parameters specified")
-          when Hash # With IP configuration
-            if !v['ip_pool'].is_a?(Hash) || !v['ip_pool']['from'].is_a?(String) ||
-               !v['ip_pool']['to'].is_a?(String) || !v['ip_netmask'].is_a?(String)
-              raise PlanError, error_msg
-            end
-            begin
-              IPAddr.new(v['ip_netmask'])
-              ip_from   = IPAddr.new(v['ip_pool']['from'])
-              ip_to     = IPAddr.new(v['ip_pool']['to'])
-              ip_defgw  = IPAddr.new(v['ip_defgw']) if v['ip_defgw']
-              if ip_from > ip_to || !(ip_defgw < ip_from || ip_defgw > ip_to)
+        raise PlanError, "Infrastructure #{i}: Unsupported type #{d['type'].to_s}" unless Infrastructure.supported?(d)
+
+        unless d['type'] == 'baremetal'
+          raise PlanError, "Infrastructure #{i}: Networks definition missing" unless d.has_key?('networks')
+          d['networks'].each_value do |v|
+            error_msg = "Infrastructure #{i}: Invalid network definition"
+            case v
+            when nil # No IP configuration
+              Dopv::log.warn("No IP parameters specified")
+            when Hash # With IP configuration
+              if !v['ip_pool'].is_a?(Hash) || !v['ip_pool']['from'].is_a?(String) ||
+                !v['ip_pool']['to'].is_a?(String) || !v['ip_netmask'].is_a?(String)
                 raise PlanError, error_msg
               end
-            rescue
+              begin
+                IPAddr.new(v['ip_netmask'])
+                ip_from   = IPAddr.new(v['ip_pool']['from'])
+                ip_to     = IPAddr.new(v['ip_pool']['to'])
+                ip_defgw  = IPAddr.new(v['ip_defgw']) if v['ip_defgw']
+                if ip_from > ip_to || !(ip_defgw < ip_from || ip_defgw > ip_to)
+                  raise PlanError, error_msg
+                end
+              rescue
+                raise PlanError, error_msg
+              end
+            else
               raise PlanError, error_msg
             end
-          else
-            raise PlanError, error_msg
           end
         end
       end
