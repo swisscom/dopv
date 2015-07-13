@@ -229,7 +229,8 @@ module Dopv
           stop_node_instance(node_instance)
 
           unless destroy_data_volumes
-            data_disks_db.select do |v| v.node == nodename
+            volumes = data_disks_db.select { |v| v.node == nodename }
+            volumes.each do |v|
               ::Dopv::log.debug("Node #{nodename} Detaching data volume #{v.name}.")
               detach_node_volume(node_instance, v) rescue nil
             end
