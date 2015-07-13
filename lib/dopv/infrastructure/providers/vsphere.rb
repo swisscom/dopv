@@ -205,9 +205,9 @@ module Dopv
 
         config_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
 
-        node_instance.volumes.reload
-
         reconfig_node_task(node_instance, config_spec)
+        
+        node_instance.volumes.reload
       end
 
       def detach_node_volume(node_instance, volume)
@@ -227,9 +227,9 @@ module Dopv
 
         config_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
 
-        node_instance.volumes.reload
-
         reconfig_node_task(node_instance, config_spec)
+        
+        node_instance.volumes.reload
       end
 
       def record_node_data_volume(volume)
