@@ -55,8 +55,9 @@ module Dopv
       end
 
       def flavor(filters={})
-        @flavor ||= compute_provider.flavors(filters).find { |f| f.name == @node_config[:flavor] }
-        raise ProviderError, "No such flavor #{@node_config[:flavor]}" unless @flavor
+        flavor_name = @node_config[:flavor] || 'm1.medium'
+        @flavor ||= compute_provider.flavors(filters).find { |f| f.name == flavor_name }
+        raise ProviderError, "No such flavor #{flavor_name}" unless @flavor
         @flavor
       end
 
@@ -76,8 +77,8 @@ module Dopv
         !node_instance.ready?
       end
 
-      def wait_for_task_completion(instance)
-        instance.wait_for { ready? }
+      def wait_for_task_completion(node_instance)
+        node_instance.wait_for { ready? }
       end
 
       def create_node_instance
