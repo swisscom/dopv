@@ -99,8 +99,8 @@ module Dopv
         @node_config[:full_clone].nil? ? true : @node_config[:full_clone]
       end
 
-      def thin_provisioned?(volume)
-        volume[:thin].nil? ? true : volume[:thin]
+      def thin_provisioned?(volume_config)
+        volume_config[:thin].nil? ? true : volume_config[:thin]
       end
 
       def default_pool
@@ -109,6 +109,10 @@ module Dopv
 
       def interfaces_config
         @node_config[:interfaces] || []
+      end
+
+      def set_gateway?(interface_config)
+        interface_config[:set_gateway].nil? ? true : interface_config[:set_gateway]
       end
 
       def affinities_config

@@ -78,7 +78,7 @@ module Dopv
           else
             ip_setting.ip = ::RbVmomi::VIM::CustomizationFixedIp('ipAddress' => i[:ip_address])
             ip_setting.subnetMask = i[:ip_netmask]
-            ip_setting.gateway = [i[:ip_gateway]] if i[:set_gateway]
+            ip_setting.gateway = [i[:ip_gateway]] if set_gateway?(i)
           end
           ip_setting
         end
