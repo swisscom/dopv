@@ -30,6 +30,10 @@ module Dopv
 
       private
 
+      def provider_tenant
+        @node_config[:tenant]
+      end
+
       def nameservers
         ns_config[:nameserver].join(" ") rescue nil
       end
@@ -42,10 +46,6 @@ module Dopv
       def volume_provider
         Dopv::log.info("Node #{nodename}: Creating volume provider.") unless @volume_provider
         @volume_provider ||= @volume_connection_opts ? ::Fog::Volume.new(@volume_connection_opts) : nil
-      end
-
-      def provider_tenant
-        @node_config[:tenant]
       end
 
       def tenant(filters={})
@@ -84,7 +84,7 @@ module Dopv
       def create_node_instance
         Dopv::log.info("Node #{nodename}: Creating node instance.")
 
-        @node_creation_opts[:nics] = add_network_ports
+        @node_creation_opts[:nics] = add_node_network_ports
         @node_creation_opts[:user_data_encoded] = [cloud_config].pack('m')
 
         Dopv::log.debug("Node #{nodename}: Spawning node instance.")
@@ -96,7 +96,8 @@ module Dopv
 
       def destroy_node_instance(node_instance, destroy_data_volumes=false)
         super(node_instance, destroy_data_volumes)
-        remove_network_ports
+        remove_node_network_ports(node_instance)
+        remove_node_floating_ips(node_instance)
       end
 
       def start_node_instance(node_instance)
@@ -140,12 +141,17 @@ module Dopv
         super(volume)
       end
 
-      def add_network_port(attrs)
+      def fixed_ip(subnet_id, ip_address)
+        rval = { :subnet_id => subnet_id }
+        %w(dhcp none).include?(ip_address) ? rval : rval.merge(:ip_address => ip_address)
+      end
+
+      def add_node_network_port(attrs)
         ::Dopv::log.debug("Node #{nodename}: Adding network port #{attrs[:name]}.")
         network_provider.ports.create(attrs)
       end
 
-      def add_network_ports
+      def add_node_network_ports
         ::Dopv::log.info("Node #{nodename}: Adding network ports.")
         ports_config = {}
         interfaces_config.each do |i|
@@ -160,22 +166,52 @@ module Dopv
             }
           end
         end
-        @network_ports = ports_config.map { |k,v| add_network_port(v.merge(:name => k)) }
+        @network_ports = ports_config.map { |k,v| add_node_network_port(v.merge(:name => k)) }
         @network_ports.collect { |p| {:port_id => p.id} }
       end
 
-      def remove_network_ports
+      def remove_node_network_ports(node_instance)
         ::Dopv::log.warn("Node #{nodename}: Removing network ports.")
-        if @network_ports
-          @network_ports.each { |p| p.destroy rescue nil }
-          @network_ports = nil
-        end
+        @network_ports ||= network_provider.ports.select { |p| p.device_id == node_instance.id } rescue {}
+        @network_ports.each { |p| p.destroy rescue nil }
+        @network_ports = {}
       end
 
-      def fixed_ip(subnet_id, ip_address)
-        rval = { :subnet_id => subnet_id }
-        %w(dhcp none).include?(ip_address) ? rval : rval.merge(:ip_address => ip_address)
+      def add_node_floating_ip(attrs)
+        ::Dopv::log.debug("Node #{nodename}: Adding floating IP to #{attrs[:nicname]}.")
+        network_provider.floating_ips.create(attrs)
       end
+
+      def add_node_floating_ips(node_instance)
+        ::Dopv::log.info("Node #{nodename}: Adding floating IPs.")
+        @network_ports ||= network_provider.ports.select { |p| p.device_id == node_instance.id }
+        interfaces_config.each do |i|
+          if i[:floating_network]
+            floating_network = network(i[:floating_network])
+            subnetwork = subnet(i[:network])
+            port = @network_ports.find { |p| p.fixed_ips.find { |f| f["subnet_id"] == subnetwork.id } }
+            attrs = {
+              :floating_network_id => floating_network.id,
+              :port_id => port.id,
+              :fixed_ip_address => port.fixed_ips.first["ip_address"],
+              :nicname => i[:name]
+            }
+            add_node_floating_ip(attrs)
+          end
+        end
+      end
+      alias_method :add_node_nics, :add_node_floating_ips
+
+      def remove_node_floating_ips(node_instance)
+        ::Dopv::log.warn("Node #{nodename}: Removing floating IPs.")
+        if node_instance
+          floating_ips = network_provider.floating_ips.select do |f|
+            node_instance.floating_ip_addresses.include?(f.floating_ip_address)
+          end
+          floating_ips.each { |f| f.destroy rescue nil }
+        end
+      end
+      alias_method :remove_node_nics, :remove_node_floating_ips
 
       def cloud_config
         config = "#cloud-config\n"  \
