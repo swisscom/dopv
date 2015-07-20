@@ -64,6 +64,7 @@ module Dopv
             end
             interface[:set_gateway] = v['set_gateway'] == false ? v['set_gateway'] : true
             interface[:virtual_switch] = v['virtual_switch'] if v['virtual_switch']
+            interface[:floating_network] = v['floating_network']
             (node[:interfaces] ||= []) << interface
           end
         end
