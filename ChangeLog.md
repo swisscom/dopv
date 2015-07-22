@@ -1,3 +1,7 @@
+# 0.1.1 22.07.2015
+## [openstack]
+ * Floating IP implementation
+
 # 0.1.0 14.07.2015
 
 ## [general]
