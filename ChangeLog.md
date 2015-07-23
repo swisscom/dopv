@@ -1,3 +1,13 @@
+# 0.2.0 23.07.2015
+
+## [core]
+ * Implement GLI parser for dopv command line tool
+   * Implement `exit_code` method to PlanError and ProviderError
+   * Fix parsing of `caller` in `Dopv::log_init` method
+ * Update to fog-1.31.0
+ * Update rhosapi-lab15ch deployment plan
+
+
 # 0.1.1 22.07.2015
 ## [openstack]
  * Floating IP implementation
