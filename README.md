@@ -31,16 +31,27 @@ A command line interface utility `dopv` is provided.
 #### Getting help
 A help can be obtained by calling `dopv -h`:
 ```
-$ dopv -h
-Usage: dopv [options]
-    -p, --plan FILE                  Specify a plan file to execute
-    -d, --disk-db FILE               Specify disk state file
-    -l, --log-file FILE              Specify log file (by default standard output)
-    -v, --log-level LEVEL            Specify a minimal log level to log
-                                     (can be one of debug, info - the default, warning, error)
-    -t, --trace                      Show back traces on errors
-    -h, --help                       Display help
+dopv --help
+NAME
+    dopv - DOPv command line tool
 
+SYNOPSIS
+    dopv [global options] command [command options] [arguments...]
+
+VERSION
+    0.2.0
+
+GLOBAL OPTIONS
+    --help                         - Show this message
+    --logfile, -l path_to_log_file - Log file (default: STDOUT)
+    --[no-]trace, -t               - Show stacktrace on crash
+    --verbosity, -v level          - Verbosity of the command line tool (default: info)
+    --version                      - Display the program version
+
+COMMANDS
+    deploy   - Deploy a plan
+    help     - Shows a list of commands or help for one command
+    undeploy - Undeploy a plan
 ```
 
 #### Deploying a plan
@@ -51,9 +62,9 @@ $ dopv -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml
 Please note that disk database file is created if it does not exist.
 
 #### Logging
-By default `dopv` logs messages with `INFO` level and higher to standard output. In order to log to a file `-l` can be specified. The `-v` option is used to set a different log threshold. Following is an example of logging everything (`DEBUG` and above) into `/tmp/dopv.log`:
+By default `dopv` logs messages with `INFO` level and higher to standard output. In order to log to a file `-l` can be specified. The `-v` option is used to set a different log threshold. Following is an example of logging everything (`DEBUG` and above) into `/tmp/dopv.log` during plan deployment:
 ```
-$ dopv -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml -l /tmp/dopv.log -v debug
+$ dopv -l /tmp/dopv.log -v debug deploy -p /tmp/plan.yaml -d /tmp/disks.yaml
 ```
 
 ## Plan
