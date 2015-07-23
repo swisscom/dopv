@@ -23,7 +23,7 @@ module GLIWrapper
 
   desc 'Log file'
   arg_name 'path_to_log_file'
-  default_value STDOUT
+  default_value 'STDOUT'
   flag [:logfile, :l]
 
   desc 'Verbosity of the command line tool'
@@ -35,7 +35,7 @@ module GLIWrapper
   switch [:trace, :t]
 
   pre do |global_options,command,options,args|
-    ::Dopv.log(global_options[:logfile])
+    ::Dopv.log(global_options[:logfile] == 'STDOUT' ? STDOUT : global_options[:logfile])
     ::Dopv.log.progname = PROGNAME
     ::Dopv.log.level = ::Logger.const_get(global_options[:verbosity].upcase)
     trace = global_options[:trace]
