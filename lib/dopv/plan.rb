@@ -2,7 +2,9 @@ require 'yaml'
 require 'ipaddr'
 
 module Dopv
-  class PlanError < StandardError; end
+  class PlanError < StandardError
+    def exit_code; 1; end
+  end
 
   class Plan
     def self.run(plan, data_disk_db_file)

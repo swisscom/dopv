@@ -4,90 +4,73 @@
 # DOPv command line client
 #
 
-$:.unshift File.join(File.dirname(__FILE__), *%w[.. lib])
-
-require 'optparse'
+require 'gli'
 require 'dopv'
 
 PROGNAME = 'dopv'
 
-ERROR_CODES = {
-  :parse_error    => 1,
-  :plan_error     => 2,
-  :provider_error => 4,
-  :unknown_error  => -1
-}
+module GLIWrapper
+  include GLI::App
+  extend self
 
-ERROR_SOURCES = {
-  :parse_error    => 'parser',
-  :plan_error     => 'plan',
-  :provider_error => 'provider',
-  :unknown_error  => 'unknown'
-}
+  trace = false
 
-LOG_LEVELS = {
-  :debug  => Logger::DEBUG,
-  :info   => Logger::INFO,
-  :warn   => Logger::WARN,
-  :error  => Logger::ERROR,
-  :fatal  => Logger::FATAL
-}
+  program_desc 'DOPv command line tool'
+  version Dopv::VERSION
 
-options = {
-  :logfile  => STDOUT,
-  :loglevel => LOG_LEVELS[:info]
-}
-error_code = 0
+  subcommand_option_handling :normal
+  arguments :strict
 
-parser = OptionParser.new do |opts|
-  opts.banner = 'Usage: dopv [options]'
-  opts.on("-p", "--plan FILE",
-          "Specify a plan file to execute") {|file| options[:plan] = file}
-  opts.on("-d", "--disk-db FILE",
-          "Specify disk state file") {|file| options[:disk_db] = file}
-  opts.on("-l", "--log-file FILE",
-          "Specify log file (by default standard output)") do |file|
-    options[:logfile] = file if file
+  desc 'Log file'
+  arg_name 'path_to_log_file'
+  default_value STDOUT
+  flag [:logfile, :l]
+
+  desc 'Verbosity of the command line tool'
+  arg_name 'level'
+  default_value 'info'
+  flag [:verbosity, :v], :must_match => ['debug', 'info', 'warn', 'error', 'fatal']
+
+  desc 'Show stacktrace on crash'
+  switch [:trace, :t]
+
+  pre do |global_options,command,options,args|
+    ::Dopv.log(global_options[:logfile])
+    ::Dopv.log.progname = PROGNAME
+    ::Dopv.log.level = ::Logger.const_get(global_options[:verbosity].upcase)
+    trace = global_options[:trace]
+
+    true
   end
-  opts.on("-v", "--log-level LEVEL",
-          "Specify a minimal log level to log",
-          "(can be one of debug, info - the default, warning, error)") do |level|
-            options[:loglevel] = LOG_LEVELS[level.to_sym]  if level
+
+  on_error do |exception|
+    ::Dopv::log.fatal {"#{exception.message}"}
+    STDERR.puts "\n#{exception.backtrace.join("\n")}" if trace
+
+    false
   end
-  opts.on("-t", "--trace",
-          "Show back traces on errors") {|trace| options[:trace] = true}
-  opts.on("-h", "--help", "Display help") do
-    puts opts
-    exit
+
+  desc 'Deploy a plan'
+  command :deploy do |c|
+    c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
+    c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
+    c.action do |global_options,options,args|
+      begin
+        ::Dopv::Plan.run(options[:plan], options[:diskdb])
+      rescue => e
+        exit_now!(e.message, (e.exit_code rescue 1))
+      end
+    end
   end
+
+  desc 'Undeploy a plan'
+  command :undeploy do |c|
+    c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
+    c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
+    c.switch [:rmdisk, :r]
+    c.action do |global_options,options,args|
+    end
+  end
+
+  exit run(ARGV)
 end
-
-ARGV << "-h" if ARGV.empty?
-
-begin
- parser.parse!
-
- ::Dopv.log(options[:logfile])
- ::Dopv.log.progname = PROGNAME
- ::Dopv.log.level = options[:loglevel]
-
- ::Dopv::Plan.run(options[:plan], options[:disk_db])
-
-rescue OptionParser::ParseError => e
-  error_code = ERROR_CODES[:parse_error]
-rescue ::Dopv::PlanError => e
-  error_code = ERROR_CODES[:plan_error]
-rescue ::Dopv::Infrastructure::ProviderError => e
-  error_code =  ERROR_CODES[:provider_error]
-rescue SystemExit
-  nil
-rescue Exception => e
-  error_code =  ERROR_CODES[:unknown_error]
-end
-
-if error_code != 0
-  Dopv::log.fatal {"%s: %s." % [ERROR_SOURCES[ERROR_CODES.key(error_code)].capitalize, e.message.gsub(/\.*$/, '')] }
-  STDERR.puts "\n#{e.backtrace.join("\n")}" if options[:trace]
-end
-  
-exit error_code

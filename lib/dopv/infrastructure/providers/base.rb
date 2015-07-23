@@ -3,7 +3,9 @@ require 'fog'
 
 module Dopv
   module Infrastructure
-    class ProviderError < StandardError; end
+    class ProviderError < StandardError
+      def exit_code; 4; end
+    end
 
     class Base
       KILO_BYTE = 1024

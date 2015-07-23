@@ -29,5 +29,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rest-client", "~> 1.7"
   spec.add_dependency "rbovirt", "~> 0.1.0"
   spec.add_dependency "rbvmomi", "~> 1.8.2"
-  spec.add_dependency "fog", "~> 1.30.0"
+  spec.add_dependency "fog", "~> 1.31.0"
+  spec.add_dependency "gli", "~>2.13.1"
 end
