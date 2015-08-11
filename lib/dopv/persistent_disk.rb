@@ -129,9 +129,11 @@ module Dopv
             @@db.delete_if {|disk| disk.node == entry[:node]}
           end
         end
+        @@dirty = true
       end
 
       def load_file
+        ::Dopv::log.info("Loading data disks DB.")
         db = []
         begin
           YAML.load_file(@db_file).each do |k, v|
