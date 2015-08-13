@@ -1,5 +1,6 @@
 require 'uri'
 require 'fog'
+require 'pry-debugger'
 
 module Dopv
   module Infrastructure
@@ -266,12 +267,13 @@ module Dopv
 
           volumes = data_disks_db.select { |v| v.node == nodename }
           volumes.each do |v|
-            ::Dopv::log.debug("Node #{nodename} Detaching data volume #{v.name}.")
-            detach_node_volume(node_instance, v) rescue nil
             if destroy_data_volumes
-              ::Dopv::log.debug("Node #{nodename} Destroying data volume #{v.name}.")
+              ::Dopv::log.warn("Node #{nodename} Destroying data volume #{v.name}.")
               destroy_node_volume(node_instance, v) rescue nil
               erase_node_data_volume(v)
+            else
+              ::Dopv::log.debug("Node #{nodename} Detaching data volume #{v.name}.")
+              detach_node_volume(node_instance, v) rescue nil
             end
           end
 
@@ -398,7 +400,7 @@ module Dopv
       end
       
       def record_node_data_volume(volume)
-        ::Dopv::log.debug("Node #{nodename} Recording data volume #{volume.name} from data volumes DB.")
+        ::Dopv::log.debug("Node #{nodename} Recording data volume #{volume[:name]} from data volumes DB.")
         data_disks_db << volume.merge(:node => nodename)
         data_disks_db.save
       end

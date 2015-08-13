@@ -164,6 +164,12 @@ module Dopv
         # This call updates the list of volumes -> no need to call reload.
         node_instance.volumes.find { |v| v.alias == config[:alias] }
       end
+
+      def destroy_node_volume(node_instance, volume)
+        node_instance.destroy_volume(:id => volume.id)
+        wait_for_task_completion(node_instance)
+        node_instance.volumes.reload
+      end
       
       def attach_node_volume(node_instance, volume)
         node_instance.attach_volume(:id => volume.id)

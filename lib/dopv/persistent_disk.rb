@@ -106,30 +106,33 @@ module Dopv
       def update(entry, attrs={})
         case entry
         when Entry
-          disk = find {|d| d == entry}
+          find_proc = Proc.new { |disk| disk == entry }
         when Hash
           raise PersistentDiskError, "Entry hash must contain a node name" unless entry.has_key?(:node)
           raise PersistentDiskError, "Entry hash must contain a disk name" unless entry.has_key?(:name)
-          disk = find {|d| d.node == entry[:node] && d.name == entry[:name]}
+          find_proc = Proc.new { |disk| disk.node == entry[:node] && disk.name == entry[:name] }
         else
           raise PersistentDiskError, "Disk entry must be Hash or Entry"
         end
-        disk.update(attrs) if disk
+
+        (disk = find(&find_proc)) && disk.update(attrs) && @@dirty = true && disk
       end
 
       def delete(entry)
         case entry
         when Entry
-          @@db.delete_if {|disk| disk == entry}
+          find_proc = Proc.new { |disk| disk == entry }
         when Hash
           raise PersistentDiskError, "Entry hash must contain at least a node name" unless entry.has_key?(:node)
           if entry.has_key?(:name)
-            @@db.delete_if {|disk| disk.node == entry[:node] && disk.name == entry[:name]}
+            find_proc = Proc.new { |disk| disk.node == entry[:node] && disk.name == entry[:name] }
           else
-            @@db.delete_if {|disk| disk.node == entry[:node]}
+            find_proc = Proc.new { |disk| disk.node == entry[:node] }
           end
         end
-        @@dirty = true
+
+        disk = find(&find_proc)
+        @@db.reject!(&find_proc) && @@dirty = true && disk
       end
 
       def load_file
