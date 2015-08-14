@@ -183,6 +183,12 @@ module Dopv
         volume
       end
 
+      def destroy_node_volume(node_instance, volume)
+        volume_instance = node_instance.volumes.find { |v| v.filename == volume.id }
+        volume_instance.destroy
+        node_instance.volumes.reload
+      end
+
       def attach_node_volume(node_instance, volume)
         backing_info = RbVmomi::VIM::VirtualDiskFlatVer2BackingInfo.new(
           :datastore => volume.pool,

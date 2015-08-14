@@ -269,11 +269,19 @@ module Dopv
           volumes.each do |v|
             if destroy_data_volumes
               ::Dopv::log.warn("Node #{nodename} Destroying data volume #{v.name}.")
-              destroy_node_volume(node_instance, v) rescue nil
+              begin
+                destroy_node_volume(node_instance, v)
+              rescue
+                ::Dopv::log.error("Could not destroy data volume #{v.name}. Please fix manually.")
+              end
               erase_node_data_volume(v)
             else
               ::Dopv::log.debug("Node #{nodename} Detaching data volume #{v.name}.")
-              detach_node_volume(node_instance, v) rescue nil
+              begin
+                detach_node_volume(node_instance, v)
+              rescue
+                ::Dopv::log.warn("Could not detach data volume #{v.name}.")
+              end
             end
           end
 
