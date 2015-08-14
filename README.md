@@ -106,7 +106,7 @@ SYNOPSIS
 COMMAND OPTIONS
     --diskdb, -d path_to_db_file - (default: none)
     --plan, -p path_to_plan_file - (required, default: none)
-    --[no-]rmdisk, -r            -
+    --[no-]rmdisk, -r            
 
 ```
 
