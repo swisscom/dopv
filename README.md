@@ -106,8 +106,7 @@ SYNOPSIS
 COMMAND OPTIONS
     --diskdb, -d path_to_db_file - (default: none)
     --plan, -p path_to_plan_file - (required, default: none)
-    --[no-]rmdisk, -r            
-
+    --[no-]rmdisk, -r            -
 ```
 
 In order to destroy a deployment specified by a plan located at `/tmp/plan.yaml` and persistent disks database located at `/tmp/pdisks.yaml` one can launch `dopv` with following options:
