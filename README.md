@@ -96,7 +96,7 @@ Please note that disk database file is created if it does not exist.
 #### Undeploying a plan
 To get a help on undeploy CLI options launch `dopv` `help undeploy` argument:
 ```
-dopv help undeploy
+$ dopv help undeploy
 NAME
     undeploy - Undeploy a plan
 
