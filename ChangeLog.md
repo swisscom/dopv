@@ -5,6 +5,7 @@
 
 ## [openstack]
  * Wait until the node is down in `Infrastructure::OpenStack#stop_node_instance`
+ * Implement `manage_etc_hosts` in `Infrastructure::OpenStack#cloud_config`
 
 ## [persistent_disk]
  * Refactor of `PersistenDisk#update` and PersistentDisk#delete` methods
