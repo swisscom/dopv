@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    dopv (0.2.0)
+    dopv (0.2.1)
       colorize (~> 0.7.5)
       fog (~> 1.31.0)
       gli (~> 2.13.1)
