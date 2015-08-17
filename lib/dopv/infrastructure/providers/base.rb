@@ -313,8 +313,9 @@ module Dopv
       end
 
       def add_node_nic(node_instance, attrs)
-        node_instance.interfaces.create(attrs)
+        nic = node_instance.interfaces.create(attrs)
         node_instance.interfaces.reload
+        nic
       end
 
       def update_node_nic(node_instance, nic, attrs)
