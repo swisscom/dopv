@@ -226,9 +226,10 @@ module Dopv
       alias_method :remove_node_nics, :remove_node_floating_ips
 
       def cloud_config
-        config = "#cloud-config\n"  \
-          "hostname: #{hostname}\n" \
-          "fqdn: #{fqdn}\n"         \
+        config = "#cloud-config\n"        \
+          "hostname: #{hostname}\n"       \
+          "fqdn: #{fqdn}\n"               \
+          "manage_etc_hosts: True\n"      \
           "ssh_pwauth: True\n"
 
         if root_password
