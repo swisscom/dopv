@@ -103,6 +103,11 @@ module Dopv
       def start_node_instance(node_instance)
       end
 
+      def stop_node_instance(node_instance)
+        super(node_instance)
+        node_instance.wait_for { !ready? }
+      end
+
       def add_node_volume(node_instance, attrs)
         config = {
           :name => attrs[:name],
@@ -117,17 +122,24 @@ module Dopv
         volume.reload
       end
 
+      def destroy_node_volume(node_instance, volume)
+        volume_instance = detach_node_volume(node_instance, volume)
+        volume_instance.destroy
+        node_instance.volumes.reload
+      end
+
       def attach_node_volume(node_instance, volume)
         volume_instance = node_instance.volumes.all.find { |v| v.id = volume.id }
         node_instance.attach_volume(volume_instance.id, nil)
         volume_instance.wait_for { volume_instance.status.downcase == "in-use" }
-        node_instance.volumes.reload
+        volume_instance
       end
 
       def detach_node_volume(node_instance, volume)
-        node_instance.detach_volume(volume.id)
-        volume.wait_for { ready? }
-        node_instance.volumes.reload
+        volume_instance = node_instance.volumes.all.find { |v| v.id = volume.id }
+        node_instance.detach_volume(volume_instance.id)
+        volume_instance.wait_for { volume_instance.status.downcase == "available" }
+        volume_instance
       end
 
       def record_node_data_volume(volume)

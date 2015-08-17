@@ -12,14 +12,43 @@ module Dopv
       MEGA_BYTE = 1024 * KILO_BYTE
       GIGA_BYTE = 1024 * MEGA_BYTE
 
+      # Based on http://docs.openstack.org/openstack-ops/content/flavors.html
+      FLAVOR = {
+        :tiny     => {
+          :cores    => 1,
+          :memory   => 536870912,
+          :storage  => 1073741824
+        },
+        :small    => {
+          :cores    => 1,
+          :memory   => 2147483648,
+          :storage  => 10737418240
+        },
+        :medium   => {
+          :cores    => 2,
+          :memory   => 4294967296,
+          :storage  => 10737418240
+        },
+        :large    => {
+          :cores    => 4,
+          :memory   => 8589934592,
+          :storage  => 10737418240
+        },
+        :xlarge   => {
+          :cores    => 8,
+          :memory   => 17179869184,
+          :storage  => 10737418240
+        }
+      }
+
       attr_reader :data_disks_db
 
       def self.bootstrap_node(node_config, data_disks_db)
         new(node_config, data_disks_db).bootstrap_node
       end
 
-      def self.destroy_node(node_config, data_disks_db)
-        new(node_config, data_disks_db).destroy_node
+      def self.destroy_node(node_config, data_disks_db, destroy_data_volumes=false)
+        new(node_config, data_disks_db).destroy_node(destroy_data_volumes)
       end
 
       def initialize(node_config, data_disks_db)
@@ -36,6 +65,8 @@ module Dopv
             add_node_data_volumes(node_instance)
             add_node_affinities(node_instance)
             start_node_instance(node_instance)
+          else
+            ::Dopv::log.warn("Node #{nodename}: Already exists.")
           end
         rescue Exception => e
           ::Dopv::log.error("Node #{nodename}: #{e}")
@@ -44,10 +75,10 @@ module Dopv
         end
       end
 
-      def destroy_node
+      def destroy_node(destroy_data_volumes=false)
         if node_exist?
           node_instance = compute_provider.servers.find { |n| n.name == nodename }
-          destroy_node_instance(node_instance)
+          destroy_node_instance(node_instance, destroy_data_volumes)
         end
       end
 
@@ -202,7 +233,6 @@ module Dopv
       def node_exist?
         begin
           if compute_provider.servers.find { |n| n.name == nodename }
-            ::Dopv::log.warn("Node #{nodename}: Already exists.")
             return true
           end
         rescue => e
@@ -234,11 +264,23 @@ module Dopv
         if node_instance
           stop_node_instance(node_instance)
 
-          unless destroy_data_volumes
-            volumes = data_disks_db.select { |v| v.node == nodename }
-            volumes.each do |v|
+          volumes = data_disks_db.select { |v| v.node == nodename }
+          volumes.each do |v|
+            if destroy_data_volumes
+              ::Dopv::log.warn("Node #{nodename} Destroying data volume #{v.name}.")
+              begin
+                destroy_node_volume(node_instance, v)
+              rescue
+                ::Dopv::log.error("Could not destroy data volume #{v.name}. Please fix manually.")
+              end
+              erase_node_data_volume(v)
+            else
               ::Dopv::log.debug("Node #{nodename} Detaching data volume #{v.name}.")
-              detach_node_volume(node_instance, v) rescue nil
+              begin
+                detach_node_volume(node_instance, v)
+              rescue
+                ::Dopv::log.warn("Could not detach data volume #{v.name}.")
+              end
             end
           end
 
@@ -310,6 +352,9 @@ module Dopv
         volume
       end
 
+      def destroy_node_volume(node_instance, volume)
+      end
+
       def attach_node_volume(node_instance, volume)
       end
 
@@ -362,7 +407,14 @@ module Dopv
       end
       
       def record_node_data_volume(volume)
+        ::Dopv::log.debug("Node #{nodename} Recording data volume #{volume[:name]} from data volumes DB.")
         data_disks_db << volume.merge(:node => nodename)
+        data_disks_db.save
+      end
+
+      def erase_node_data_volume(volume)
+        ::Dopv::log.debug("Node #{nodename} Erasing data volume #{volume.name} from data volumes DB.")
+        data_disks_db.delete(volume)
         data_disks_db.save
       end
 

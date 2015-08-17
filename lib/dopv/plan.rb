@@ -7,16 +7,12 @@ module Dopv
   end
 
   class Plan
-    def self.run(plan, data_disk_db_file)
-      new(plan, data_disk_db_file).run
-    end
-
-    def initialize(plan, data_disk_db_file)
+    def initialize(plan)
       @nodes = []
       @plan ||= load_plan(plan)
-      @data_disks_db ||= load_data_disks_db(data_disk_db_file)
+    end
 
-      # Validate plan
+    def parse
       validate
       
       # Generate node definition according to plan
@@ -25,7 +21,7 @@ module Dopv
       @plan['nodes'].each do |n, d|
         node = {}
         # Infrastructure provider definitions
-        node[:provider] = Infrastructure::SUPPORTED_TYPES[infrastructures[d['infrastructure']]['type'].to_sym]
+        node[:provider] = infrastructures[d['infrastructure']]['type'].to_sym
         node[:provider_username] = infrastructures[d['infrastructure']]['credentials']['username'] rescue nil
         node[:provider_password] = infrastructures[d['infrastructure']]['credentials']['password'] rescue nil
         node[:provider_pubkey_hash] = infrastructures[d['infrastructure']]['credentials']['provider_pubkey_hash'] rescue nil
@@ -78,10 +74,8 @@ module Dopv
         node[:dns] = Hash[d['dns'].map { |k, v| [k.to_sym, v] }] unless d['dns'].nil?
         @nodes << node
       end
-    end
 
-    def run
-      @nodes.each { |node_config| ::Dopv::Infrastructure::bootstrap_node(node_config, @data_disks_db) }
+      @nodes
     end
 
     private
@@ -98,11 +92,6 @@ module Dopv
       end
     end
 
-    def load_data_disks_db(db_file)
-      ::Dopv::log.info("Loading data disks DB.")
-      ::Dopv::PersistentDisk::load(db_file)
-    end
-
     def validate
       Dopv::log.debug("Validating.")
       # A plan must be of a Hash type and it must have at least clouds and nodes
@@ -116,7 +105,7 @@ module Dopv
         raise PlanError, "Infrastructures and nodes must be Hash"
       end
       @plan['infrastructures'].each do |i, d|
-        raise PlanError, "Infrastructure #{i}: Unsupported type #{d['type'].to_s}" unless Infrastructure.supported?(d)
+        raise PlanError, "Infrastructure #{i}: Unsupported type #{d['type'].to_s}" unless ::Dopv::Infrastructure::supported_provider?(d)
 
         unless d['type'] == 'baremetal'
           raise PlanError, "Infrastructure #{i}: Networks definition missing" unless d.has_key?('networks')

@@ -56,7 +56,9 @@ module GLIWrapper
     c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
     c.action do |global_options,options,args|
       begin
-        ::Dopv::Plan.run(options[:plan], options[:diskdb])
+        plan = ::Dopv::load_plan(options[:plan])
+        data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
+        ::Dopv::run_plan(plan, data_volumes_db, :deploy)
       rescue => e
         exit_now!(e.message, (e.exit_code rescue 1))
       end
@@ -69,6 +71,13 @@ module GLIWrapper
     c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
     c.switch [:rmdisk, :r]
     c.action do |global_options,options,args|
+      begin
+        plan = ::Dopv::load_plan(options[:plan])
+        data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
+        ::Dopv::run_plan(plan, data_volumes_db, :undeploy, options[:rmdisk])
+      rescue => e
+        exit_now!(e.message, (e.exit_code rescue 1))
+      end
     end
   end
 

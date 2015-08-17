@@ -19,10 +19,27 @@ Or install it yourself as:
 ## Usage
 
 ### Library
+Deploy a plan
 ```ruby
 require 'dopv'
-plan = Dopv::Plan.load('plan_file', 'disk_db_file')
-plan.execute
+plan = ::Dopv::load_plan(plan_file)
+data_volumes_db = ::Dopv::load_data_volumes_db(db_file)
+::Dopv::run_plan(plan, data_volumes_db)
+```
+Undeploy a plan while keeping data volumes
+```ruby
+require 'dopv'
+plan = ::Dopv::load_plan(plan_file)
+data_volumes_db = ::Dopv::load_data_volumes_db(db_file)
+::Dopv::run_plan(plan, data_volumes_db, :undeploy)
+```
+Undeploy a plan and remove data volumes from infrastructure provider (stack) as
+well as from persistent data volumes DB:
+```ruby
+require 'dopv'
+plan = ::Dopv::load_plan(plan_file)
+data_volumes_db = ::Dopv::load_data_volumes_db(db_file)
+::Dopv::run_plan(plan, data_volumes_db, :undeploy, true)
 ```
 
 ### CLI
@@ -55,11 +72,51 @@ COMMANDS
 ```
 
 #### Deploying a plan
-To deploy a plan located at `/tmp/plan.yaml` while using persistent disks database located at `/tmp/pdisks.yaml` one can launch `dopv` with following options:
+To get a help on deploy CLI options launch `dopv` `help deploy` argument:
 ```
-$ dopv -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml
+$ dopv help deploy
+NAME
+    deploy - Deploy a plan
+
+SYNOPSIS
+    dopv [global options] deploy [command options]
+
+COMMAND OPTIONS
+    --diskdb, -d path_to_db_file - (default: none)
+    --plan, -p path_to_plan_file - (required, default: none)
 ```
+
+To deploy a plan located at `/tmp/plan.yaml` and store and/or load persistent disks database located at `/tmp/pdisks.yaml` one can launch `dopv` with following options:
+```
+$ dopv deploy -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml
+```
+
 Please note that disk database file is created if it does not exist.
+
+#### Undeploying a plan
+To get a help on undeploy CLI options launch `dopv` `help undeploy` argument:
+```
+$ dopv help undeploy
+NAME
+    undeploy - Undeploy a plan
+
+SYNOPSIS
+    dopv [global options] undeploy [command options]
+
+COMMAND OPTIONS
+    --diskdb, -d path_to_db_file - (default: none)
+    --plan, -p path_to_plan_file - (required, default: none)
+    --[no-]rmdisk, -r            -
+```
+
+In order to destroy a deployment specified by a plan located at `/tmp/plan.yaml` and persistent disks database located at `/tmp/pdisks.yaml` one can launch `dopv` with following options:
+```
+$ dopv undeploy -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml
+```
+If you also want to remove the data volumes of each node and remove their records from persistent data volumes DB, please specify `-r` or `--rmdisk` option as shown bellow:
+```
+$ dopv undeploy -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml
+```
 
 #### Logging
 By default `dopv` logs messages with `INFO` level and higher to standard output. In order to log to a file `-l` can be specified. The `-v` option is used to set a different log threshold. Following is an example of logging everything (`DEBUG` and above) into `/tmp/dopv.log` during plan deployment:

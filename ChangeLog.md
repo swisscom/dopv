@@ -1,3 +1,27 @@
+# Unreleased
+
+## [doc]
+ * Update documentation
+
+## [openstack]
+ * Wait until the node is down in `Infrastructure::OpenStack#stop_node_instance`
+
+## [persistent_disk]
+ * Refactor of `PersistenDisk#update` and PersistentDisk#delete` methods
+
+## [core]
+ * Remove `lib/infrastructure/core.rb`. Move things into `lib/infrastructure.rb`
+
+## [infrastructure]
+ * Refactor dynamic provider loader
+ * Simplify provider supported types and provider to class name lookups
+ * Fix broken memory definition of xlarge flavor
+
+## [general]
+ * Implement _undeploy_ action that removes a deployment according to a plan and
+   optionally removes also data volumes on a target cloud provider as well as
+   from persistent volumes database
+
 # 0.2.0 23.07.2015
 
 ## [core]
