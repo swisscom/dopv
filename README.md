@@ -115,7 +115,7 @@ $ dopv undeploy -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml
 ```
 If you also want to remove the data volumes of each node and remove their records from persistent data volumes DB, please specify `-r` or `--rmdisk` option as shown bellow:
 ```
-$ dopv undeploy -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml
+$ dopv undeploy -p  /tmp/pdisks.yaml -d /tmp/pdisks.yaml -r
 ```
 
 #### Logging

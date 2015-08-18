@@ -11,7 +11,7 @@
    from persistent volumes database
 
 ## [persistent_disk]
- * Refactor of `PersistenDisk#update` and PersistentDisk#delete` methods
+ * Refactor of `PersistenDisk#update` and `PersistentDisk#delete` methods
 
 ## [infrastructure]
  * Refactor dynamic provider loader
