@@ -67,23 +67,26 @@ module Dopv
           :ssh_authorized_keys => root_ssh_keys
         }
 
-        nics = interfaces_config.collect do |i|
+        customization_opts[:nicsdef] = interfaces_config.collect do |i|
           nic = {}
-          if i[:ip_address]
-            nic[:nicname] = i[:name]
+          nic[:nicname] = i[:name]
+          nic[:on_boot] = 'true'
+          nic[:boot_protocol] = case i[:ip_address]
+                                when 'dhcp'
+                                  'DHCP'
+                                when 'none'
+                                  'NONE'
+                                else
+                                  'STATIC'
+                                end
+          unless i[:ip_address] == 'dhcp' || i[:ip_address] == 'none'
             nic[:ip] = i[:ip_address]
-            if i[:ip_address] != 'dhcp' && i[:ip_address] != 'none'
-              nic[:netmask] = i[:ip_netmask]
-              nic[:gateway] = i[:ip_gateway] if i[:set_gateway]
-            end
-            nic
+            nic[:netmask] = i[:ip_netmask]
+            nic[:gateway] = i[:ip_gateway] if i[:set_gateway]
           end
+          nic
         end
-        # Current implementation of cloud-init in rbovirt does not support
-        # DHCP/NONE, nor multiple interfaces, hence the first interface for
-        # which a static IP is defined is passed.
-        customization_opts.merge!(nics.first) if nics.first.is_a?(Hash)
-        
+
         customization_opts
       end
 

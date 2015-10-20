@@ -1,7 +1,16 @@
+GIT
+  remote: https://github.com/abenari/rbovirt.git
+  revision: 2b7b0736d7dadbbad693b00c990609ce597c9500
+  ref: 2b7b073
+  specs:
+    rbovirt (0.1.0)
+      nokogiri
+      rest-client (> 1.7.0)
+
 PATH
   remote: .
   specs:
-    dopv (0.2.1)
+    dopv (0.2.2)
       colorize (~> 0.7.5)
       fog (~> 1.31.0)
       gli (~> 2.13.1)
@@ -56,16 +65,16 @@ GEM
     fog-atmos (0.1.0)
       fog-core
       fog-xml
-    fog-aws (0.7.3)
+    fog-aws (0.7.6)
       fog-core (~> 1.27)
       fog-json (~> 1.0)
       fog-xml (~> 0.1)
       ipaddress (~> 0.8)
-    fog-brightbox (0.8.0)
+    fog-brightbox (0.9.0)
       fog-core (~> 1.22)
       fog-json
       inflecto (~> 0.0.2)
-    fog-core (1.32.0)
+    fog-core (1.32.1)
       builder
       excon (~> 0.45)
       formatador (~> 0.2)
@@ -88,7 +97,7 @@ GEM
       fog-core (~> 1.27)
       fog-json (~> 1.0)
       fog-xml (~> 0.1)
-    fog-profitbricks (0.0.3)
+    fog-profitbricks (0.0.5)
       fog-core
       fog-xml
       nokogiri
@@ -100,7 +109,7 @@ GEM
       fog-core
       fog-json
       fog-xml
-    fog-sakuracloud (1.0.1)
+    fog-sakuracloud (1.1.1)
       fog-core
       fog-json
     fog-serverlove (0.1.2)
@@ -125,7 +134,7 @@ GEM
       fog-core
       nokogiri (~> 1.5, >= 1.5.11)
     formatador (0.2.5)
-    gli (2.13.1)
+    gli (2.13.2)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
     inflecto (0.0.2)
@@ -149,9 +158,6 @@ GEM
       debugger (~> 1.3)
       pry (>= 0.9.10, < 0.11.0)
     rake (10.4.2)
-    rbovirt (0.1.0)
-      nokogiri
-      rest-client (> 1.7.0)
     rbvmomi (1.8.2)
       builder
       nokogiri (>= 1.4.1)
@@ -188,4 +194,8 @@ DEPENDENCIES
   pry
   pry-debugger
   rake
+  rbovirt (= 0.1.0)!
   rspec
+
+BUNDLED WITH
+   1.10.6

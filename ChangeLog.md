@@ -1,3 +1,11 @@
+# 0.2.2 20.10.2015
+## [plan]
+ *  make stricter validation of node's interfaces
+
+## [ovirt]
+ * implement management of additional NICs via cloud-init
+
+
 # 0.2.1 18.08.2015
 ## [core]
  * Remove `lib/infrastructure/core.rb`. Move things into `lib/infrastructure.rb`

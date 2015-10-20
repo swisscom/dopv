@@ -197,6 +197,7 @@ module Dopv
 
         # Networks
         if d.has_key?('interfaces')
+          raise PlanError, "Node #{n}: Interfaces definition must be a hash" unless d['interfaces'].is_a?(Hash)
           d['interfaces'].each do |i, v|
             if !v.is_a?(Hash) || !v['network'].is_a?(String)
               raise PlanError, "Node #{n}: Invalid interface definition"
