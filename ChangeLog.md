@@ -1,4 +1,7 @@
 # 0.2.2 20.10.2015
+## [cli]
+ * improve error handling
+
 ## [plan]
  *  make stricter validation of node's interfaces
 
