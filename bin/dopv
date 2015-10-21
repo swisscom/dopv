@@ -6,6 +6,7 @@
 
 require 'gli'
 require 'dopv'
+require 'pry-debugger'
 
 PROGNAME = 'dopv'
 
@@ -47,7 +48,7 @@ module GLIWrapper
     ::Dopv::log.fatal {"#{exception.message}"}
     STDERR.puts "\n#{exception.backtrace.join("\n")}" if trace
 
-    false
+    true
   end
 
   desc 'Deploy a plan'
@@ -55,13 +56,9 @@ module GLIWrapper
     c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
     c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
     c.action do |global_options,options,args|
-      begin
-        plan = ::Dopv::load_plan(options[:plan])
-        data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
-        ::Dopv::run_plan(plan, data_volumes_db, :deploy)
-      rescue => e
-        exit_now!(e.message, (e.exit_code rescue 1))
-      end
+      plan = ::Dopv::load_plan(options[:plan])
+      data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
+      ::Dopv::run_plan(plan, data_volumes_db, :deploy)
     end
   end
 
@@ -71,13 +68,9 @@ module GLIWrapper
     c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
     c.switch [:rmdisk, :r]
     c.action do |global_options,options,args|
-      begin
-        plan = ::Dopv::load_plan(options[:plan])
-        data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
-        ::Dopv::run_plan(plan, data_volumes_db, :undeploy, options[:rmdisk])
-      rescue => e
-        exit_now!(e.message, (e.exit_code rescue 1))
-      end
+      plan = ::Dopv::load_plan(options[:plan])
+      data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
+      ::Dopv::run_plan(plan, data_volumes_db, :undeploy, options[:rmdisk])
     end
   end
 
