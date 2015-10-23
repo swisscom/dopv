@@ -17,14 +17,15 @@ module Dopv
         }
 
         @node_creation_opts = {
-          :name       => nodename,
-          :template   => template.id,
-          :cores      => cores,
-          :memory     => memory,
-          :storage    => storage,
-          :cluster    => cluster.id,
-          :ha         => keep_ha?,
-          :clone      => full_clone?
+          :name               => nodename,
+          :template           => template.id,
+          :cores              => cores,
+          :memory             => memory,
+          :storage            => storage,
+          :cluster            => cluster.id,
+          :ha                 => keep_ha?,
+          :clone              => full_clone?,
+          :storagedomain_name => default_pool
         }
       end
 
@@ -150,8 +151,9 @@ module Dopv
       end
 
       def add_node_volume(node_instance, attrs)
-        storage_domain = compute_provider.storage_domains.find { |d| d.name == attrs[:pool] }
-        raise ProviderError, "No such storage domain #{attrs[:storage_domain]}" unless storage_domain
+        storage_domain_name = attrs[:pool] || default_pool # try to default to 'default_pool'
+        storage_domain = compute_provider.storage_domains.find { |d| d.name == storage_domain_name }
+        raise ProviderError, "No such storage domain #{storage_domain_name}" unless storage_domain
 
         config = {
           :alias => attrs[:name],
