@@ -1,3 +1,10 @@
+# unreleased 23.10.2015
+
+## [ovirt]
+ * implement default storage domain for root and data disks. This can be used to
+   specify which storage domain should be used for disks defined by the template
+   during provisioning of VM.
+
 # 0.2.2 20.10.2015
 ## [cli]
  * improve error handling
