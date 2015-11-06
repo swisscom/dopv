@@ -7,7 +7,7 @@ module Dopv
     class Ovirt < Base
       def initialize(node_config, data_disks_db)
         super(node_config, data_disks_db)
-        
+
         @compute_connection_opts = {
           :provider           => 'ovirt',
           :ovirt_username     => provider_username,
@@ -30,6 +30,12 @@ module Dopv
       end
 
       private
+
+      # NOTE: this can be removed once storage domains glitches are fixed on
+      # OVirt/RHEV side.
+      def full_clone?
+        !default_pool.nil? && !default_pool.empty? && super != true ? true : super
+      end
 
       def compute_provider
         unless @compute_provider
@@ -176,7 +182,7 @@ module Dopv
         wait_for_task_completion(node_instance)
         node_instance.volumes.reload
       end
-      
+
       def attach_node_volume(node_instance, volume)
         node_instance.attach_volume(:id => volume.id)
         wait_for_task_completion(node_instance)
@@ -188,7 +194,7 @@ module Dopv
         wait_for_task_completion(node_instance)
         node_instance.volumes.reload
       end
-      
+
       def record_node_data_volume(volume)
         ::Dopv::log.debug("Node #{nodename}: Recording volume #{volume.alias} into DB.")
         volume = {
