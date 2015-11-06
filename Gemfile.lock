@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/abenari/rbovirt.git
-  revision: 2b7b0736d7dadbbad693b00c990609ce597c9500
-  ref: 2b7b073
+  revision: 0ff587acebd2a979885856e3ef8c1778dee36663
+  ref: 0ff587a
   specs:
     rbovirt (0.1.0)
       nokogiri
