@@ -249,7 +249,7 @@ module Dopv
       def node_instance_stopped?(node_instance)
         node_instance.stopped?
       end
-      
+
       def wait_for_task_completion(node_instance)
       end
 
@@ -335,7 +335,7 @@ module Dopv
         end
         node_instance.interfaces.reload
       end
-      
+
       def add_node_affinity(node_instance, affinity)
       end
 
@@ -361,7 +361,7 @@ module Dopv
 
       def detach_node_volume(node_instance, volume)
       end
-      
+
       def add_node_data_volumes(node_instance)
         ::Dopv::log.info("Node #{nodename}: Adding data volumes.")
 
@@ -406,7 +406,7 @@ module Dopv
           end
         end
       end
-      
+
       def record_node_data_volume(volume)
         ::Dopv::log.debug("Node #{nodename} Recording data volume #{volume[:name]} from data volumes DB.")
         data_disks_db << volume.merge(:node => nodename)
