@@ -1,4 +1,4 @@
-# unreleased 06.11.2015
+# 0.2.3 06.11.2015
 
 ## [ovirt]
  * implement default storage domain for root and data disks. This can be used to
