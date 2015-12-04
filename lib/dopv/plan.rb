@@ -1,5 +1,6 @@
 require 'yaml'
 require 'ipaddr'
+require 'pry-debugger'
 
 module Dopv
   class PlanError < StandardError
@@ -14,7 +15,7 @@ module Dopv
 
     def parse
       validate
-      
+
       # Generate node definition according to plan
       Dopv::log.debug("Parsing.")
       infrastructures = @plan['infrastructures']
@@ -97,41 +98,36 @@ module Dopv
       # A plan must be of a Hash type and it must have at least clouds and nodes
       # definitions.
       raise PlanError, "The plan must be a Hash" unless @plan.is_a?(Hash)
-      if !@plan.has_key?('infrastructures') || !@plan.has_key?('nodes')
-        raise PlanError, "Infrastructures and nodes must be defined"
-      end
-      # Infrastructure and node definitions must be groupped into hashes.
-      if !@plan['infrastructures'].is_a?(Hash) || !@plan['nodes'].is_a?(Hash)
-        raise PlanError, "Infrastructures and nodes must be Hash"
-      end
+      raise PlanError, "Infrastructures and nodes hashes must be defined" unless
+        %w(infrastructures nodes).all? { |k| @plan.key?(k) && @plan[k].is_a?(Hash) }
+
       @plan['infrastructures'].each do |i, d|
         raise PlanError, "Infrastructure #{i}: Unsupported type #{d['type'].to_s}" unless ::Dopv::Infrastructure::supported_provider?(d)
-
-        unless d['type'] == 'baremetal'
-          raise PlanError, "Infrastructure #{i}: Networks definition missing" unless d.has_key?('networks')
-          d['networks'].each_value do |v|
-            error_msg = "Infrastructure #{i}: Invalid network definition"
-            case v
-            when nil # No IP configuration
-              Dopv::log.warn("No IP parameters specified")
-            when Hash # With IP configuration
-              if !v['ip_pool'].is_a?(Hash) || !v['ip_pool']['from'].is_a?(String) ||
-                !v['ip_pool']['to'].is_a?(String) || !v['ip_netmask'].is_a?(String)
-                raise PlanError, error_msg
+        next if d['type'] == 'baremetal' && !d.key?('networks')
+        raise PlanError, "Infrastructure #{i}: Networks definition missing" unless d.has_key?('networks')
+        d['networks'].each do |n, v|
+          name = n.to_s
+          #binding.pry
+          raise PlanError, "Infrastructure #{i}: Network '#{name}' must be a hash" unless v.is_a?(Hash)
+          unless v.empty?
+            raise PlanError, "Infrastructure #{i}: A non-empty network '#{name}' must specify 'ip_pool', 'ip_netmask' and 'ip_defgw'" unless
+              v.keys.sort == %w(ip_defgw ip_netmask ip_pool)
+            raise PlanError, "Infrastructure #{i}: The 'ip_pool' of network '#{name}' must be a hash that consists of 'from' and 'to' keys" unless
+              v['ip_pool'].is_a?(Hash) && v['ip_pool'].keys == %w(from to)
+            raise PlanError, "Infrastructure #{i}: The values of 'from' and 'to' keys of network '#{name}' must be strings" unless
+              v['ip_pool']['from'].is_a?(String) && v['ip_pool']['to'].is_a?(String)
+            raise PlanError, "Infrastructure #{i}: The 'ip_netmask' and 'ip_gateway' of network '#{name}' must be strings" unless
+              v['ip_netmask'].is_a?(String) && v['ip_defgw'].is_a?(String)
+            begin
+              IPAddr.new(v['ip_netmask'])
+              ip_from   = IPAddr.new(v['ip_pool']['from'])
+              ip_to     = IPAddr.new(v['ip_pool']['to'])
+              ip_defgw  = IPAddr.new(v['ip_defgw']) if v['ip_defgw']
+              if ip_from > ip_to || !(ip_defgw < ip_from || ip_defgw > ip_to)
+                raise PlanError, "Infrastructure #{i}: 'from' must be smaller than 'to' and 'ip_gateway' must be outside of 'from' to 'to' interval"
               end
-              begin
-                IPAddr.new(v['ip_netmask'])
-                ip_from   = IPAddr.new(v['ip_pool']['from'])
-                ip_to     = IPAddr.new(v['ip_pool']['to'])
-                ip_defgw  = IPAddr.new(v['ip_defgw']) if v['ip_defgw']
-                if ip_from > ip_to || !(ip_defgw < ip_from || ip_defgw > ip_to)
-                  raise PlanError, error_msg
-                end
-              rescue
-                raise PlanError, error_msg
-              end
-            else
-              raise PlanError, error_msg
+            rescue
+              raise PlanError, "Infrastructure #{i}: Invalid definition of one or more values of network '#{name}'"
             end
           end
         end
@@ -162,7 +158,7 @@ module Dopv
         # If memory is defined, check if it is a simple string of a certain
         # format.
         raise PlanError, error_msg if d['storage'] && d['storage'].to_s !~ /^\d+[\dmMgG]$/
-        
+
         raise PlanError, "Node #{n}: Invalid infrastructure pointer #{d['infrastructure']}" unless @plan['infrastructures'].has_key?(d['infrastructure'])
         if d.has_key?('infrastructure_properties')
           error_msg = "Node #{n}: Invalid infrastructure properties definition"
@@ -199,17 +195,19 @@ module Dopv
         if d.has_key?('interfaces')
           raise PlanError, "Node #{n}: Interfaces definition must be a hash" unless d['interfaces'].is_a?(Hash)
           d['interfaces'].each do |i, v|
+            name = i.to_s
             if !v.is_a?(Hash) || !v['network'].is_a?(String)
-              raise PlanError, "Node #{n}: Invalid interface definition"
+              raise PlanError, "Node #{n}: Invalid definition of interface #{name}"
             end
             if v['virtual_switch'] && !v['virtual_switch'].is_a?(String)
-              raise PlanError,  "Node #{n}: Invalid virtual switch definition"
+              raise PlanError,  "Node #{n}: Invalid virtual switch definition of interface #{name}"
             end
             unless @plan['infrastructures'][d['infrastructure']]['networks'].has_key?(v['network'])
-              raise PlanError, "Node #{n}: Invalid network pointer #{v['network']}"
+              raise PlanError, "Node #{n}: Invalid network pointer #{v['network']} of interface #{name}"
             end
+
             if v['ip'] && v['ip'] != "dhcp" && v['ip'] != "none"
-              error_msg = "Node #{n}: Invalid IP definition"
+              error_msg = "Node #{n}: Interface #{name} has an invalid IP definition"
               begin
                 ip = IPAddr.new(v['ip'])
                 ip_from   = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['from'])
@@ -222,7 +220,7 @@ module Dopv
                 raise PlanError, error_msg
               end
               if v['set_gateway'] && (v['set_gateway'] != true && v['set_gateway'] != false)
-                raise PlanError, "Node #{n}: set_gateway must be of boolean type"
+                raise PlanError, "Node #{n}: set_gateway of interface #{name} must be of boolean type"
               end
             end
           end
