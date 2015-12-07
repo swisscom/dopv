@@ -1,6 +1,5 @@
 require 'yaml'
 require 'ipaddr'
-require 'pry-debugger'
 
 module Dopv
   class PlanError < StandardError
@@ -19,14 +18,22 @@ module Dopv
       # Generate node definition according to plan
       Dopv::log.debug("Parsing.")
       infrastructures = @plan['infrastructures']
+      credentials = @plan['credentials']
       @plan['nodes'].each do |n, d|
         node = {}
         # Infrastructure provider definitions
         node[:provider] = infrastructures[d['infrastructure']]['type'].to_sym
-        node[:provider_username] = infrastructures[d['infrastructure']]['credentials']['username'] rescue nil
-        node[:provider_password] = infrastructures[d['infrastructure']]['credentials']['password'] rescue nil
-        node[:provider_pubkey_hash] = infrastructures[d['infrastructure']]['credentials']['provider_pubkey_hash'] rescue nil
         node[:provider_endpoint] = infrastructures[d['infrastructure']]['endpoint'] rescue nil
+        # Credentials definitions
+        case infrastructures[d['infrastructure']]['credentials']
+        when Hash
+          node[:provider_username] = infrastructures[d['infrastructure']]['credentials']['username'] rescue nil
+          node[:provider_password] = infrastructures[d['infrastructure']]['credentials']['password'] rescue nil
+          node[:provider_pubkey_hash] = infrastructures[d['infrastructure']]['credentials']['provider_pubkey_hash'] rescue nil
+        when String
+          node[:provider_username] = credentials[infrastructures[d['infrastructure']]['credentials']]['username'] rescue nil
+          node[:provider_password] = credentials[infrastructures[d['infrastructure']]['credentials']]['password'] rescue nil
+        end
         # Node definitions
         node[:nodename] = n
         node[:fqdn] = d['fqdn']
@@ -101,13 +108,34 @@ module Dopv
       raise PlanError, "Infrastructures and nodes hashes must be defined" unless
         %w(infrastructures nodes).all? { |k| @plan.key?(k) && @plan[k].is_a?(Hash) }
 
+      if @plan.has_key?('credentials')
+        raise PlanError, "Credentials must be a hash" unless @plan['credentials'].is_a?(Hash)
+      else
+        Dopv::log.warn("Credentials will be required in DOPv >= 0.4.0")
+      end
+
       @plan['infrastructures'].each do |i, d|
         raise PlanError, "Infrastructure #{i}: Unsupported type #{d['type'].to_s}" unless ::Dopv::Infrastructure::supported_provider?(d)
+
+        case d['credentials']
+        when String
+          raise PlanError, "Infrastructure #{i}: No such credentials #{d['credentials']}" unless @plan['credentials'].has_key?(d['credentials'])
+        when Hash
+          Dopv::log.warn("Infrastructure #{i}: Explicit credentials definition is deprecated and will be removed in DOPv >= 0.4.0")
+          raise PlanError, "Infrastructure #{i}: Invalid credentials definition" unless
+            %w(username password).all? { |k| d['credentials'].key?(k) && d['credentials'][k].is_a?(String) }
+        end
+
         next if d['type'] == 'baremetal' && !d.key?('networks')
         raise PlanError, "Infrastructure #{i}: Networks definition missing" unless d.has_key?('networks')
         d['networks'].each do |n, v|
           name = n.to_s
-          #binding.pry
+
+          if v.nil?
+            Dopv::log.warn("Infrastructure #{i}: Network '#{name}' must be a hash. This will become a strict rule in DOPv >= 0.4.0")
+            v = {}
+          end
+
           raise PlanError, "Infrastructure #{i}: Network '#{name}' must be a hash" unless v.is_a?(Hash)
           unless v.empty?
             raise PlanError, "Infrastructure #{i}: A non-empty network '#{name}' must specify 'ip_pool', 'ip_netmask' and 'ip_defgw'" unless
