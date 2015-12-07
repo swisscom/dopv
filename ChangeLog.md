@@ -1,4 +1,4 @@
-# unreleased
+# 0.2.4 07.12.2015
 
 ## plan
  * make sure `{}` is accepted as a valid network entry

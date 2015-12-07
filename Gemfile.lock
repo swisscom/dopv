@@ -10,7 +10,7 @@ GIT
 PATH
   remote: .
   specs:
-    dopv (0.2.3)
+    dopv (0.2.4)
       colorize (~> 0.7.5)
       fog (~> 1.31.0)
       fog-google (< 0.1.1)
@@ -117,7 +117,7 @@ GEM
     fog-serverlove (0.1.2)
       fog-core
       fog-json
-    fog-softlayer (1.0.0)
+    fog-softlayer (1.0.2)
       fog-core
       fog-json
     fog-storm_on_demand (0.1.1)
@@ -136,7 +136,7 @@ GEM
       fog-core
       nokogiri (~> 1.5, >= 1.5.11)
     formatador (0.2.5)
-    gli (2.13.2)
+    gli (2.13.4)
     http-cookie (1.0.2)
       domain_name (~> 0.5)
     inflecto (0.0.2)
