@@ -1,7 +1,10 @@
 # unreleased
 
 ## plan
- * make sure '{}' is accepted as a valid network entry
+ * make sure `{}` is accepted as a valid network entry
+ * implement newer definition of credentials
+ * support `nil` network definitions for backward compatibility
+
 # 0.2.3 06.11.2015
 
 ## [ovirt]
