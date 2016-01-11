@@ -1,3 +1,12 @@
+# 0.2.5 11.01.2016
+
+## plan
+ * implement deprecation warning if no `ip` is defined for a network interface.
+   Please note that valid IP definitions are:
+   * valid IP string
+   * dhcp string
+   * none string
+
 # 0.2.4 07.12.2015
 
 ## plan

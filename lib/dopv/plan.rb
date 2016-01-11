@@ -234,8 +234,9 @@ module Dopv
               raise PlanError, "Node #{n}: Invalid network pointer #{v['network']} of interface #{name}"
             end
 
+            Dopv::log.warn("Node #{n}: Interface #{name} must have a valid IP definition (IP, dhcp or none). This will become a strict rule in DOPv >= 0.4.0") if v['ip'].nil?
             if v['ip'] && v['ip'] != "dhcp" && v['ip'] != "none"
-              error_msg = "Node #{n}: Interface #{name} has an invalid IP definition"
+              error_msg = "Node #{n}: Interface #{name} has an invalid IP definition (can be a valid IP, dhcp or none)"
               begin
                 ip = IPAddr.new(v['ip'])
                 ip_from   = IPAddr.new(@plan['infrastructures'][d['infrastructure']]['networks'][v['network']]['ip_pool']['from'])
