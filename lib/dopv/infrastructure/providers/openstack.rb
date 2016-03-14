@@ -24,7 +24,7 @@ module Dopv
           :name         => nodename,
           :image_ref    => template.id,
           :flavor_ref   => flavor.id,
-          :config_drive => true
+          :config_drive => config_drive?
         }
       end
 
@@ -32,6 +32,10 @@ module Dopv
 
       def provider_tenant
         @node_config[:tenant]
+      end
+
+      def config_drive?
+        @node_config[:use_config_drive]
       end
 
       def nameservers

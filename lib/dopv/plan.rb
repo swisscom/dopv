@@ -45,7 +45,7 @@ module Dopv
         node[:full_clone] = d['full_clone']
         node[:product_id] = d['product_id']
         node[:organization_name] = d['organization_name']
-        node[:timezone] = d['timezone']
+        node[:use_config_drive] = [false, 'false'].include?(d['infrastructure_properties']['use_config_drive']) ? false : true
         # Create an empty disks array
         node[:disks] = []
         # Add disks if any
@@ -213,6 +213,8 @@ module Dopv
               raise PlanError, error_msg unless v.is_a?(String)
             when 'tenant_id'
               raise PlanError, error_msg unless v.is_a?(String)
+            when 'use_config_drive'
+              raise PlanError, error_msg unless [true, false, 'true', 'false'].include?(v)
             else
               raise PlanError, error_msg
             end

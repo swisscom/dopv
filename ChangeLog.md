@@ -1,3 +1,12 @@
+# 0.2.6 14.03.2016
+
+## [plan]
+ * Implement `use_config_drive` infrastructure property. By default it is set to
+   `true`, i.e. to use config drive.
+
+## [openstack]
+ * Implement `config_drive?` method for switching the config drive on and off
+
 # 0.2.5 11.01.2016
 
 ## plan
