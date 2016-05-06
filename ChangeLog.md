@@ -2,6 +2,7 @@
 
 ## [ovirt]
  * `stop_node_instance` - wait until the node is down
+
 ## [dependencies]
  * Updated to use rbovirt-0.1.1
 
