@@ -1,4 +1,9 @@
-# 0.2.6 14.03.2016
+# 0.2.6 06.05.2016
+
+## [ovirt]
+ * `stop_node_instance` - wait until the node is down
+## [dependencies]
+ * Updated to use rbovirt-0.1.1
 
 ## [plan]
  * Implement `use_config_drive` infrastructure property. By default it is set to
