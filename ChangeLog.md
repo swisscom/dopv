@@ -1,3 +1,9 @@
+# 0.2.7 08.06.2016
+
+## [plan]
+ * Allow networks without a default gateway. Must set `ip_defgw` to `false` AND
+   `set_defaultgw` to `false` on a host level.
+
 # 0.2.6 06.05.2016
 
 ## [ovirt]

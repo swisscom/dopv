@@ -144,14 +144,14 @@ module Dopv
               v['ip_pool'].is_a?(Hash) && v['ip_pool'].keys == %w(from to)
             raise PlanError, "Infrastructure #{i}: The values of 'from' and 'to' keys of network '#{name}' must be strings" unless
               v['ip_pool']['from'].is_a?(String) && v['ip_pool']['to'].is_a?(String)
-            raise PlanError, "Infrastructure #{i}: The 'ip_netmask' and 'ip_gateway' of network '#{name}' must be strings" unless
-              v['ip_netmask'].is_a?(String) && v['ip_defgw'].is_a?(String)
+            raise PlanError, "Infrastructure #{i}: The 'ip_netmask' and 'ip_gateway' of network '#{name}' must be strings" if
+              !v['ip_netmask'].is_a?(String) || ((v['ip_defgw'] != false) && !v['ip_defgw'].is_a?(String))
             begin
               IPAddr.new(v['ip_netmask'])
               ip_from   = IPAddr.new(v['ip_pool']['from'])
               ip_to     = IPAddr.new(v['ip_pool']['to'])
-              ip_defgw  = IPAddr.new(v['ip_defgw']) if v['ip_defgw']
-              if ip_from > ip_to || !(ip_defgw < ip_from || ip_defgw > ip_to)
+              ip_defgw  = IPAddr.new(v['ip_defgw']) if v['ip_defgw'] != false
+              if ip_from > ip_to || (v['ip_defgw'] && !(ip_defgw < ip_from || ip_defgw > ip_to))
                 raise PlanError, "Infrastructure #{i}: 'from' must be smaller than 'to' and 'ip_gateway' must be outside of 'from' to 'to' interval"
               end
             rescue
