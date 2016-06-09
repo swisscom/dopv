@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    dopv (0.2.6)
+    dopv (0.2.7)
       colorize (~> 0.7.5)
       fog (~> 1.31.0)
       fog-google (< 0.1.1)
@@ -67,7 +67,7 @@ GEM
       fog-core (~> 1.22)
       fog-json
       inflecto (~> 0.0.2)
-    fog-core (1.38.0)
+    fog-core (1.40.0)
       builder
       excon (~> 0.49)
       formatador (~> 0.2)
@@ -105,7 +105,7 @@ GEM
     fog-serverlove (0.1.2)
       fog-core
       fog-json
-    fog-softlayer (1.1.0)
+    fog-softlayer (1.1.1)
       fog-core
       fog-json
     fog-storm_on_demand (0.1.1)
@@ -131,13 +131,15 @@ GEM
     ipaddress (0.8.3)
     json (1.8.3)
     method_source (0.8.2)
-    mime-types (2.99.1)
-    mini_portile2 (2.0.0)
-    multi_json (1.12.0)
+    mime-types (2.99.2)
+    mini_portile2 (2.1.0)
+    multi_json (1.12.1)
     net-ssh (2.9.4)
     netrc (0.11.0)
-    nokogiri (1.6.7.2)
-      mini_portile2 (~> 2.0.0.rc2)
+    nokogiri (1.6.8)
+      mini_portile2 (~> 2.1.0)
+      pkg-config (~> 1.1.7)
+    pkg-config (1.1.7)
     pry (0.10.1)
       coderay (~> 1.1.0)
       method_source (~> 0.8.1)
@@ -188,4 +190,4 @@ DEPENDENCIES
   rspec
 
 BUNDLED WITH
-   1.11.2
+   1.12.5
