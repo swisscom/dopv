@@ -1,3 +1,9 @@
+# 0.2.8 14.06.2016
+
+## [plan]
+ * Make sure that `use_config_drive` is set to `true` if not present in node's
+   definition.
+
 # 0.2.7 08.06.2016
 
 ## [plan]

@@ -45,7 +45,7 @@ module Dopv
         node[:full_clone] = d['full_clone']
         node[:product_id] = d['product_id']
         node[:organization_name] = d['organization_name']
-        node[:use_config_drive] = [false, 'false'].include?(d['infrastructure_properties']['use_config_drive']) ? false : true
+        node[:use_config_drive] = ([false, 'false'].include?(d['infrastructure_properties']['use_config_drive']) ? false : true) rescue true
         # Create an empty disks array
         node[:disks] = []
         # Add disks if any
