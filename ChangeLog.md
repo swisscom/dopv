@@ -1,3 +1,8 @@
+# 0.3.0 20.06.2016
+
+## [general]
+ * Drop support for ruby 1.9.3 in favor of 2.2+
+
 # 0.2.8 14.06.2016
 
 ## [plan]
