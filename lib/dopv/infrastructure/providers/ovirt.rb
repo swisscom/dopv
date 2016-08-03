@@ -128,15 +128,17 @@ module Dopv
         # Remove all interfaces defined by the template
         remove_node_nics(node_instance) { |n, i| n.destroy_interface(:id => i.id) }
 
+        # fetch first network for our reservation dance
+        first_network = cluster.networks.first.name
         # Reserve MAC addresses
         (1..interfaces_config.size).each do |i|
           name = "tmp#{i}"
           ::Dopv::log.debug("Node #{nodename}: Creating interface #{name}.")
           attrs = {
-            :name => name,
-            :network_name => 'rhevm',
-            :plugged => true,
-            :linked => true
+            :name         => name,
+            :network_name => first_network,
+            :plugged      => true,
+            :linked       => true
           }
           add_node_nic(node_instance, attrs)
         end
