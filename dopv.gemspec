@@ -22,7 +22,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake"
   spec.add_development_dependency "rspec"
   spec.add_development_dependency "pry"
-  if RUBY_VERSION < 2
+  if RUBY_VERSION < "2"
     spec.add_development_dependency "pry-debugger"
   else
     spec.add_development_dependency "pry-byebug"
