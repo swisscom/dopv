@@ -1,3 +1,8 @@
+# 0.3.1 03.08.2016
+
+## [ovirt]
+ * Automatically choose the first network, rather than a hardcoded one.
+
 # 0.3.0 20.06.2016
 
 ## [general]
