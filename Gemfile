@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 # Until released
-#gem 'rbovirt', '0.1.0', :git => 'https://github.com/abenari/rbovirt.git', :ref => '0ff587a'
+gem 'rbovirt', '0.1.2', :git => 'https://github.com/abenari/rbovirt.git', :ref => '6c83188'
 
 # For development purposes
 #gem 'rbovirt', '0.1.0', :path => '../rbovirt', :branch => 'implement-multiple-nics-for-cloudinit'

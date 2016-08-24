@@ -1,3 +1,17 @@
+# 0.3.3 24.08.2016
+
+## [samples]
+ * Include plan and disk DB for lab10ch.
+
+## [ovirt]
+ * Update rbovrit to fix cloudinit issues with multiple nameserver entries.
+
+# 0.3.2 04.08.2016
+
+## [general]
+ * Better support for pry integration.
+ * Support for ruby193 and ruby22x.
+
 # 0.3.1 03.08.2016
 
 ## [ovirt]
