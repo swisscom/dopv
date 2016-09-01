@@ -1,3 +1,12 @@
+# 0.3.4 01.09.2016
+
+## [plan]
+ * Better error messages for infrastructure_properties validation.
+ * Implement support for security groups.
+
+## [openstack]
+ * Implement support for security groups.
+
 # 0.3.3 24.08.2016
 
 ## [samples]
