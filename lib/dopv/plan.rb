@@ -191,32 +191,32 @@ module Dopv
         if d.has_key?('infrastructure_properties')
           error_msg = "Node #{n}: Invalid infrastructure properties definition"
           if !d['infrastructure_properties'].is_a?(Hash)
-            raise PlanError, error_msg
+            raise PlanError, "#{error_msg} - infrastructure properties must be a hash"
           end
           d['infrastructure_properties'].each do |p, v|
             case p
             when 'datacenter'
-              raise PlanError, error_msg unless v.is_a?(String)
+              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
             when 'cluster'
-              raise PlanError, error_msg unless v.is_a?(String)
+              raise PlanError, "#{error_msg} - #{p} must be a string" unless v.is_a?(String)
             when 'keep_ha'
               if v != true && v != false
-                raise PlanError, error_msg
+                raise PlanError, "#{error_msg} - #{p} must be boolean"
               end
             when 'affinity_groups'
-              raise PlanError, error_msg unless v.is_a?(Array)
+              raise PlanError, "#{error_msg} - #{p} must be array" unless v.is_a?(Array)
             when 'dest_folder'
-              raise PlanError, error_msg unless v.is_a?(String)
+              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
             when 'default_pool'
-              raise PlanError, error_msg unless v.is_a?(String)
+              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
             when 'tenant'
-              raise PlanError, error_msg unless v.is_a?(String)
+              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
             when 'tenant_id'
-              raise PlanError, error_msg unless v.is_a?(String)
+              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
             when 'use_config_drive'
-              raise PlanError, error_msg unless [true, false, 'true', 'false'].include?(v)
+              raise PlanError, "#{error_msg} - #{p} must be boolean" unless [true, false, 'true', 'false'].include?(v)
             else
-              raise PlanError, error_msg
+              raise PlanError, "#{error_msg} - unknown property #{p}"
             end
           end
         end

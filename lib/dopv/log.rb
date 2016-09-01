@@ -1,5 +1,6 @@
 require 'colorize'
 require 'socket'
+require 'logger'
 
 module Dopv
   LOG_COLORS = {
