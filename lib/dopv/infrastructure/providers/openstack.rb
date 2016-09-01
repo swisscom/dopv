@@ -21,10 +21,11 @@ module Dopv
         @volume_connection_opts  = @compute_connection_opts
 
         @node_creation_opts = {
-          :name         => nodename,
-          :image_ref    => template.id,
-          :flavor_ref   => flavor.id,
-          :config_drive => config_drive?
+          :name            => nodename,
+          :image_ref       => template.id,
+          :flavor_ref      => flavor.id,
+          :config_drive    => config_drive?,
+          :security_groups => security_groups
         }
       end
 
@@ -36,6 +37,10 @@ module Dopv
 
       def config_drive?
         @node_config[:use_config_drive]
+      end
+
+      def security_groups
+        @node_config[:security_groups]
       end
 
       def nameservers
@@ -77,6 +82,40 @@ module Dopv
         net
       end
 
+      def assign_security_groups(node_instance)
+        unless security_groups.empty?
+          Dopv::log.info("Node #{nodename}: Assigning security groups.")
+          config_sgs = security_groups.dup
+          node_instance.security_groups.each do |sg|
+            # Remove the security group from configuration if it is already
+            # assigned to an instance.
+            if config_sgs.delete(sg.name)
+              Dopv::log.debug("Node #{nodename}: Already assigned to security group #{sg.name}.")
+              next
+            end
+            # Remove the security group assignment if it isn't in the
+            # configuration.
+            unless config_sgs.include?(sg.name)
+              Dopv::log.debug("Node #{nodename}: Removing unneeded security group #{sg.name}.")
+              compute_provider.remove_security_group(node_instance.id, sg.name)
+              wait_for_task_completion(node_instance)
+            end
+          end
+          # Add remaining security groups defined in config array.
+          config_sgs.each do |sg_name|
+            begin
+              Dopv::log.debug("Node #{nodename}: Adding security group #{sg_name}.")
+              compute_provider.add_security_group(node_instance.id, sg_name)
+              wait_for_task_completion(node_instance)
+            rescue
+              raise ProviderError, "An error occured while assigning security group #{sg_name}"
+            end
+          end
+          node_instance.reload
+        end
+        node_instance.security_groups
+      end
+
       def node_instance_stopped?(node_instance)
         !node_instance.ready?
       end
@@ -94,8 +133,11 @@ module Dopv
         Dopv::log.debug("Node #{nodename}: Spawning node instance.")
         instance = compute_provider.servers.create(@node_creation_opts)
         wait_for_task_completion(instance)
-
         instance.reload
+        
+        assign_security_groups(instance)
+
+        instance
       end
 
       def destroy_node_instance(node_instance, destroy_data_volumes=false)

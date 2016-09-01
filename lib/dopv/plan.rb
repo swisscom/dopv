@@ -55,7 +55,7 @@ module Dopv
             node[:disks] << Hash[dsk.map { |k, v| [k.to_sym, v] }]
           end
         end
-        d['infrastructure_properties'].each { |k, v| node[k.to_sym] = v } if d['infrastructure_properties']
+        d['infrastructure_properties'].each { |k, v| node[k.to_sym] = v unless k == 'default_security_groups' } if d['infrastructure_properties']
         if d['interfaces']
           d['interfaces'].each do |k, v|
             interface = {}
@@ -80,9 +80,15 @@ module Dopv
         node[:credentials] = Hash[d['credentials'].map { |k, v| [k.to_sym, v] }] unless d['credentials'].nil?
         # Add DNS
         node[:dns] = Hash[d['dns'].map { |k, v| [k.to_sym, v] }] unless d['dns'].nil?
+        # Add security groups
+        node[:security_groups] = []
+        if d['security_groups']
+          node[:security_groups] = d['security_groups']
+        else
+          node[:security_groups] = (d['infrastructure_properties']['default_security_groups'] || []) | (d['additional_security_groups'] || [])
+        end
         @nodes << node
       end
-
       @nodes
     end
 
@@ -215,6 +221,8 @@ module Dopv
               raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
             when 'use_config_drive'
               raise PlanError, "#{error_msg} - #{p} must be boolean" unless [true, false, 'true', 'false'].include?(v)
+            when 'default_security_groups'
+              raise PlanError, "#{error_msg} - #{p} must be an array of strings" unless v.is_a?(Array) && v.all? { |i| i.is_a?(String) }
             else
               raise PlanError, "#{error_msg} - unknown property #{p}"
             end
@@ -302,6 +310,15 @@ module Dopv
           end
           if d['dns'].has_key?('domain') && !d['dns']['domain']
             raise PlanError, "Node #{n}: Invalid search domain definition"
+          end
+        end
+        # Security groups
+        if d.has_key?('security_groups') && d.has_key?('additional_security_groups')
+          raise PlanError, "Node #{n}: security_groups and additional_security_groups are mutually exclusive"
+        end
+        %w(security_groups additional_security_groups).each do |sg|
+          if d.has_key?(sg) && !(d[sg].is_a?(Array) && d[sg].all? { |i| i.is_a?(String) })
+            raise PlanError, "Node #{n}: #{sg} must be an array of strings"
           end
         end
       end
