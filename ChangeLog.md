@@ -1,3 +1,8 @@
+# 0.3.5 21.09.2016
+
+## [plan]
+ * Fix that not all infrastructure_properties are required by providers
+
 # 0.3.4 01.09.2016
 
 ## [plan]

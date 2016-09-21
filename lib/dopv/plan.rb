@@ -85,7 +85,7 @@ module Dopv
         if d['security_groups']
           node[:security_groups] = d['security_groups']
         else
-          node[:security_groups] = (d['infrastructure_properties']['default_security_groups'] || []) | (d['additional_security_groups'] || [])
+          node[:security_groups] = ((d['infrastructure_properties']||{})['default_security_groups'] || []) | (d['additional_security_groups'] || [])
         end
         @nodes << node
       end
