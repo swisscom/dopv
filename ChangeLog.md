@@ -1,3 +1,8 @@
+# 0.3.6 17.10.2016
+
+## [dependencies]
+ * Use fog_profitbricks version that is compatible with ruby 1.9.x
+
 # 0.3.5 21.09.2016
 
 ## [plan]
