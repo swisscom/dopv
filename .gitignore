@@ -17,3 +17,6 @@ test/version_tmp
 tmp
 *.sw[po]
 vendor
+tags
+gems.tags
+TAGS
