@@ -1,12 +1,14 @@
 require 'fog'
 require 'uri'
 require 'open-uri'
+require 'pry-byebug'
 
 module Dopv
   module Infrastructure
     class Ovirt < Base
-      def initialize(node_config, data_disks_db)
-        super(node_config, data_disks_db)
+      def initialize(plan, data_disks_db)
+        super(plan, data_disks_db)
+        binding.pry
 
         @compute_connection_opts = {
           :provider           => 'ovirt',

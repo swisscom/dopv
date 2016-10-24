@@ -6,6 +6,7 @@
 
 require 'gli'
 require 'dopv'
+require 'pry-byebug'
 
 PROGNAME = 'dopv'
 
@@ -70,6 +71,14 @@ module GLIWrapper
       plan = ::Dopv::load_plan(options[:plan])
       data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
       ::Dopv::run_plan(plan, data_volumes_db, :undeploy, options[:rmdisk])
+    end
+  end
+
+  desc 'Validate plan file'
+  command :validate do |c|
+    c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
+    c.action do |global_options,options,args|
+      ::Dopv::plan_valid?(options[:plan]) ? puts('Plan valid.') : puts('Plan is NOT valid!')
     end
   end
 

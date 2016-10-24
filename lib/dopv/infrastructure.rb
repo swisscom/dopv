@@ -15,42 +15,20 @@ module Dopv
       :baremetal  => 'BareMetal'
     }
 
-    def self.supported_provider?(object)
-      case object
-      when String
-        PROVIDER_CLASSES.has_key?(object.to_sym)
-      when Symbol
-        PROVIDER_CLASSES.has_key?(object)
-      when Hash
-        (PROVIDER_CLASSES.has_key?(object['type'].to_sym) || PROVIDER_CLASSES.has_key?(object[:type].to_sym)) rescue false
-      else
-        false
-      end
-    end
-
-    def self.provider_module(provider_name)
-      "#{PROVIDER_BASE}/#{PROVIDER_CLASSES[provider_name.to_sym].downcase}"
-    end
-
-    def self.provider_class(provider_name)
-      klass_name = "Dopv::Infrastructure::#{PROVIDER_CLASSES[provider_name.to_sym.downcase]}"
+    def self.load_provider(provider)
+      require "#{PROVIDER_BASE}/#{PROVIDER_CLASSES[provider].downcase}"
+      klass_name = "Dopv::Infrastructure::#{PROVIDER_CLASSES[provider]}"
       klass_name.split('::').inject(Object) { |res, i| res.const_get(i) }
     end
 
-    def self.load_provider(provider_name)
-      raise ProviderError, "Unsupported provider #{provider_name.to_s}" unless supported_provider?(provider_name)
-      require provider_module(provider_name)
-      klass = provider_class(provider_name)
+    def self.bootstrap_node(plan, data_disk_db)
+      provider = load_provider(plan.infrastructure.provider)
+      provider.bootstrap_node(plan, data_disk_db)
     end
 
-    def self.bootstrap_node(node_config, data_disk_db)
-      provider = load_provider(node_config[:provider])
-      provider.bootstrap_node(node_config, data_disk_db)
-    end
-
-    def self.destroy_node(node_config, data_disk_db, destroy_data_volumes=false)
-      provider = load_provider(node_config[:provider])
-      provider.destroy_node(node_config, data_disk_db, destroy_data_volumes)
+    def self.destroy_node(plan, data_disk_db, destroy_data_volumes=false)
+      provider = load_provider(plan.infrastructure.provider)
+      provider.destroy_node(plan, data_disk_db, destroy_data_volumes)
     end
   end
 end

@@ -1,3 +1,4 @@
+require 'forwardable'
 require 'uri'
 require 'fog'
 
@@ -8,52 +9,28 @@ module Dopv
     end
 
     class Base
-      KILO_BYTE = 1024
-      MEGA_BYTE = 1024 * KILO_BYTE
-      GIGA_BYTE = 1024 * MEGA_BYTE
-
-      # Based on http://docs.openstack.org/openstack-ops/content/flavors.html
-      FLAVOR = {
-        :tiny     => {
-          :cores    => 1,
-          :memory   => 536870912,
-          :storage  => 1073741824
-        },
-        :small    => {
-          :cores    => 1,
-          :memory   => 2147483648,
-          :storage  => 10737418240
-        },
-        :medium   => {
-          :cores    => 2,
-          :memory   => 4294967296,
-          :storage  => 10737418240
-        },
-        :large    => {
-          :cores    => 4,
-          :memory   => 8589934592,
-          :storage  => 10737418240
-        },
-        :xlarge   => {
-          :cores    => 8,
-          :memory   => 17179869184,
-          :storage  => 10737418240
-        }
-      }
+      extend Forwardable
 
       attr_reader :data_disks_db
+      def_delegators :@plan, :nodename, :fqdn, :hostname, :domainname, :dns
+      def_delegators :@plan, :cores, :memory, :storage, :flavor
+      def_delegators :@plan, :infrastructure, :infrastructure_properties
+      def_delegators :@plan, :timezone
+      def_delegator :@plan, :interfaces, :interfaces_config
+      def_delegator :@plan, :data_disks, :volumes_config
+      def_delegators :@plan, :credentials
 
-      def self.bootstrap_node(node_config, data_disks_db)
-        new(node_config, data_disks_db).bootstrap_node
+      def self.bootstrap_node(plan, data_disks_db)
+        new(plan, data_disks_db).bootstrap_node
       end
 
-      def self.destroy_node(node_config, data_disks_db, destroy_data_volumes=false)
-        new(node_config, data_disks_db).destroy_node(destroy_data_volumes)
+      def self.destroy_node(plan, data_disks_db, destroy_data_volumes=false)
+        new(plan, data_disks_db).destroy_node(destroy_data_volumes)
       end
 
-      def initialize(node_config, data_disks_db)
+      def initialize(plan, data_disks_db)
         @compute_provider = nil
-        @node_config = node_config
+        @plan = plan
         @data_disks_db = data_disks_db
       end
 
@@ -84,104 +61,28 @@ module Dopv
 
       private
 
-      def nodename
-        @node_config[:nodename]
-      end
-
-      def fqdn
-        @node_config[:fqdn] || nodename
-      end
-
-      def hostname
-        fqdn.split(".").first
-      end
-
-      def domainname
-        fqdn.split(".").drop(1).join(".")
-      end
-
-      def provider_username
-        @node_config[:provider_username]
-      end
-
-      def provider_password
-        @node_config[:provider_password]
-      end
-
-      def provider_url
-        @node_config[:provider_endpoint]
-      end
-
-      def provider_scheme
-        ::URI.parse(provider_url).scheme
-      end
-
-      def provider_host
-        ::URI.parse(provider_url).host
-      end
-
-      def provider_port
-        ::URI.parse(provider_url).port
-      end
-
-      def keep_ha?
-        @node_config[:keep_ha].nil? ? true : @node_config[:keep_ha]
-      end
-
-      def full_clone?
-        @node_config[:full_clone].nil? ? true : @node_config[:full_clone]
-      end
-
+      # TODO: Check what is this for
       def thin_provisioned?(volume_config)
         volume_config[:thin].nil? ? true : volume_config[:thin]
       end
-
-      def default_pool
-        @node_config[:default_pool]
-      end
-
-      def interfaces_config
-        @node_config[:interfaces] || []
-      end
+      # END
 
       def set_gateway?(interface_config)
         interface_config[:set_gateway].nil? ? true : interface_config[:set_gateway]
       end
 
-      def affinities_config
-        @node_config[:affinity_groups] || []
-      end
-
-      def volumes_config
-        @node_config[:disks] || []
-      end
-
-      def ns_config
-        @node_config[:dns] || {}
-      end
-
-      def nameservers
-        ns_config[:nameserver] rescue nil
-      end
-
-      def searchdomains
-        ns_config[:domain] rescue nil
-      end
-
-      def timezone
-        @node_config[:timezone]
-      end
-
-      def credentials_config
-        @node_config[:credentials]
-      end
-
       def root_password
-        credentials_config[:root_password] rescue nil
+        if @root_password.nil?
+          cred = credentials.find { |c| c.type == :username_password && c.username == 'root' }
+        end
+        @root_password ||= cred.nil? ? nil : cred.password
       end
 
-      def root_ssh_keys
-       credentials_config[:root_ssh_keys] rescue nil
+      def root_ssh_pubkeys
+        if @root_ssh_pubkeys.nil?
+          cred = credentials.find_all { |c| c.type == :ssh_key && c.username == 'root' }
+        end
+        @root_password ||= cred.empty? ? [] : cred.collect { |k| k.public_key }.uniq
       end
 
       def administrator_password
@@ -200,33 +101,33 @@ module Dopv
       def datacenter(filters={})
        @datacenter ||= compute_provider.datacenters(filters).find do |d|
           if d.is_a?(Hash) && d.has_key?(:name)
-            d[:name] == @node_config[:datacenter]
+            d[:name] == @plan[:datacenter]
           elsif d.methods.include?(:name)
-            d.name == @node_config[:datacenter]
+            d.name == @plan[:datacenter]
           else
             raise ProviderError, "Unsupported datacenter class #{d.class}"
           end
         end
-        raise ProviderError, "No such data center #{@node_config[:datacenter]}" unless @datacenter
+        raise ProviderError, "No such data center #{@plan[:datacenter]}" unless @datacenter
         @datacenter
       end
 
       def cluster(filters={})
-        @cluster ||= compute_provider.clusters(filters).find { |c| c.name == @node_config[:cluster] }
-        raise ProviderError, "No such cluster #{@node_config[:cluster]}" unless @cluster
+        @cluster ||= compute_provider.clusters(filters).find { |c| c.name == @plan[:cluster] }
+        raise ProviderError, "No such cluster #{@plan[:cluster]}" unless @cluster
         @cluster
       end
 
       def template(filters={})
-        raise ProviderError, "No template defined" unless @node_config[:image]
+        raise ProviderError, "No template defined" unless @plan[:image]
         @template ||= if compute_provider.respond_to?(:templates)
-                         compute_provider.templates.all(filters).find { |t| t.name == @node_config[:image] }
+                         compute_provider.templates.all(filters).find { |t| t.name == @plan[:image] }
                        elsif compute_provider.respond_to?(:images)
-                         compute_provider.images.all(filters).find { |t| t.name == @node_config[:image] }
+                         compute_provider.images.all(filters).find { |t| t.name == @plan[:image] }
                        else
                          raise ProviderError, "The provider does not to have template/image collection"
                        end
-        raise ProviderError, "No such template #{@node_config[:image]}" unless @template
+        raise ProviderError, "No such template #{@plan[:image]}" unless @template
         @template
       end
 
@@ -423,73 +324,7 @@ module Dopv
       end
 
       def add_node_affinities(node_instance)
-        affinities_config.each { |a| add_node_affinity(node_instance, a) }
-      end
-
-      def get_size(value, return_unit=:byte)
-        size_in_bytes = case value
-                        when /\d[Mm]/
-                          value.split(/[Mm]/).first.to_i * MEGA_BYTE
-                        when /\d[Gg]/
-                          value.split(/[Mm]/).first.to_i * GIGA_BYTE
-                        else
-                          value.to_i rescue 0
-                        end
-        raise ProviderError, "Invalid value #{value}" unless  size_in_bytes > 0
-
-        case return_unit
-        when :gigabyte
-          (size_in_bytes / GIGA_BYTE).to_i
-        when :megabyte
-          (size_in_bytes / MEGA_BYTE).to_i
-        when :kilobyte
-          (size_in_bytes / KILO_BYTE).to_i
-        when :byte
-          size_in_bytes
-        else
-          raise ProviderError, "Invalid return unit value #{return_unit}"
-        end
-      end
-
-      def cores
-        unless @cores
-          value = case @node_config[:flavor]
-                  when nil
-                    case @node_config[:cores]
-                    when Integer
-                      @node_config[:cores]
-                    when /\d/
-                      @node_config[:cores].to_i
-                    else
-                      FLAVOR[:medium][:cores]
-                    end
-                  else
-                    FLAVOR[@node_config[:flavor].to_sym][:cores] rescue 0
-                  end
-          @cores = value
-        end
-        raise ProviderError, "Invalid cores value #{value}" unless @cores > 0
-        @cores
-      end
-
-      def memory(return_unit=:byte)
-        unless @memory
-          value = @node_config[:flavor] ?
-            (FLAVOR[@node_config[:flavor].to_sym][:memory] rescue nil) :
-            (@node_config[:memory].nil? ? FLAVOR[:medium][:memory] : @node_config[:memory])
-          @memory = get_size(value, return_unit)
-        end
-        @memory
-      end
-
-      def storage(return_unit=:byte)
-        unless @storage
-          value = @node_config[:flavor] ?
-            (FLAVOR[@node_config[:flavor].to_sym][:storage] rescue nil) :
-            (@node_config[:storage].nil? ? FLAVOR[:medium][:storage] : @node_config[:storage])
-          @storage = get_size(value, return_unit)
-        end
-        @storage
+        infrastructure_properties.affinity_groups.each { |a| add_node_affinity(node_instance, a) }
       end
     end
   end
