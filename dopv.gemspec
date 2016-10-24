@@ -27,6 +27,9 @@ Gem::Specification.new do |spec|
   else
     spec.add_development_dependency "pry-byebug"
   end
+  # Newer guard listen versions do not work properly with RB <= 2.2.2
+  spec.add_development_dependency "listen", "~> 3.0.8"
+  spec.add_development_dependency "guard-ctags-bundler"
 
   spec.add_dependency "json", "~> 1.8"
   spec.add_dependency "colorize", "~> 0.7.5"
@@ -38,6 +41,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "fog-profitbricks", "~> 0.0.5" # fog dependency but fog-profitbricks > 0.5 requires ruby 2.x
   spec.add_dependency "fog", "~> 1.36.0"
   spec.add_dependency "gli", "~> 2.13.1"
+  spec.add_dependency "dop_common", "~> 0.8.1"
   if RUBY_VERSION < "2"
     spec.add_dependency "rest-client", "< 2.0"
   end
