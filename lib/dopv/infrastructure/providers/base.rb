@@ -72,25 +72,25 @@ module Dopv
       end
 
       def root_password
-        if @root_password.nil?
-          cred = credentials.find { |c| c.type == :username_password && c.username == 'root' }
-        end
+        cred = credentials.find { |c| c.type == :username_password && c.username == 'root' } if
+          @root_password.nil?
         @root_password ||= cred.nil? ? nil : cred.password
       end
 
       def root_ssh_pubkeys
-        if @root_ssh_pubkeys.nil?
-          cred = credentials.find_all { |c| c.type == :ssh_key && c.username == 'root' }
-        end
+        cred = credentials.find_all { |c| c.type == :ssh_key && c.username == 'root' } if
+          @root_ssh_pubkeys.nil?
         @root_password ||= cred.empty? ? [] : cred.collect { |k| k.public_key }.uniq
       end
 
       def administrator_password
-        credentials_config[:administrator_password] rescue nil
+        cred = credentials.find { |c| c.type == :username_password && c.username == 'Administrator' } if
+          @administrator_password.nil?
+        @administrator_password ||= cred.nil? ? nil : cred.password
       end
 
       def administrator_fullname
-        credentials_config[:administrator_fullname] rescue 'Administrator'
+        'Administrator'
       end
 
       def compute_provider
