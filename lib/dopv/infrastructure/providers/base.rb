@@ -13,7 +13,7 @@ module Dopv
 
       attr_reader :data_disks_db
       def_delegators :@plan, :nodename, :fqdn, :hostname, :domainname, :dns
-      def_delegators :@plan, :cores, :memory, :storage, :flavor
+      def_delegators :@plan, :image, :cores, :memory, :storage, :flavor
       def_delegators :@plan, :infrastructure, :infrastructure_properties
       def_delegators :@plan, :timezone
       def_delegator :@plan, :interfaces, :interfaces_config
@@ -119,15 +119,15 @@ module Dopv
       end
 
       def template(filters={})
-        raise ProviderError, "No template defined" unless @plan[:image]
+        raise ProviderError, "No template defined" unless image
         @template ||= if compute_provider.respond_to?(:templates)
-                         compute_provider.templates.all(filters).find { |t| t.name == @plan[:image] }
+                         compute_provider.templates.all(filters).find { |t| t.name == image }
                        elsif compute_provider.respond_to?(:images)
-                         compute_provider.images.all(filters).find { |t| t.name == @plan[:image] }
+                         compute_provider.images.all(filters).find { |t| t.name == image }
                        else
                          raise ProviderError, "The provider does not to have template/image collection"
                        end
-        raise ProviderError, "No such template #{@plan[:image]}" unless @template
+        raise ProviderError, "No such template #{image}" unless @template
         @template
       end
 
