@@ -36,7 +36,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "net-ssh", "< 3.0" # fog dependcy but net-ssh >= 3.x require ruby 2.x
   spec.add_dependency "fog-google", "< 0.1.1" # fog dependcy but net-ssh >= 3.x require ruby 2.x
   spec.add_dependency "fog-profitbricks", "~> 0.0.5" # fog dependency but fog-profitbricks > 0.5 requires ruby 2.x
-  spec.add_dependency "fog", "~> 1.31.0"
+  spec.add_dependency "fog", "~> 1.36.0"
   spec.add_dependency "gli", "~> 2.13.1"
   if RUBY_VERSION < "2"
     spec.add_dependency "rest-client", "< 2.0"
