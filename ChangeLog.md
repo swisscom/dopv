@@ -1,3 +1,14 @@
+# 0.3.7 01.11.2016
+
+## [dependencies]
+ * Update to fog-1.36.0
+
+## [openstack]
+  * Use `openstack_project_name` instead of `openstack_tenant`.
+  * Use `openstack_domain_id`; `default` is used if it isn't specified.
+  * Remove `volume_provider` and use compute's volumes instead as it saves some
+	API calls.
+
 # 0.3.6 17.10.2016
 
 ## [dependencies]
