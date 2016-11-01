@@ -30,7 +30,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "json", "~> 1.8"
   spec.add_dependency "colorize", "~> 0.7.5"
-  spec.add_dependency "rest-client", "~> 1.7"
+  #spec.add_dependency "rest-client", "~> 1.7"
   spec.add_dependency "rbovirt", "~> 0.1.2"
   spec.add_dependency "rbvmomi", "~> 1.8.2"
   spec.add_dependency "net-ssh", "< 3.0" # fog dependcy but net-ssh >= 3.x require ruby 2.x
