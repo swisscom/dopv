@@ -7,13 +7,15 @@ module Dopv
         super(node_config, data_disks_db)
 
         @compute_connection_opts = {
-          :provider             => 'openstack',
-          :openstack_username   => provider_username,
-          :openstack_api_key    => provider_password,
-          :openstack_tenant     => provider_tenant,
-          :openstack_auth_url   => provider_url,
-          :connection_options   => {
-            :ssl_verify_peer => false
+          :provider               => 'openstack',
+          :openstack_username     => provider_username,
+          :openstack_api_key      => provider_password,
+          :openstack_project_name => provider_tenant,
+          :openstack_domain_id    => provider_domain_id,
+          :openstack_auth_url     => provider_url,
+          :connection_options     => {
+            :ssl_verify_peer => false,
+            #:debug_request   => true
           }
         }
 
@@ -35,6 +37,10 @@ module Dopv
         @node_config[:tenant]
       end
 
+      def provider_domain_id
+        @node_config[:domain_id] || 'default'
+      end
+
       def config_drive?
         @node_config[:use_config_drive]
       end
@@ -50,11 +56,6 @@ module Dopv
       def network_provider
         Dopv::log.info("Node #{nodename}: Creating network provider.") unless @network_provider
         @network_provider ||= @network_connection_opts ? ::Fog::Network.new(@network_connection_opts) : nil
-      end
-
-      def volume_provider
-        Dopv::log.info("Node #{nodename}: Creating volume provider.") unless @volume_provider
-        @volume_provider ||= @volume_connection_opts ? ::Fog::Volume.new(@volume_connection_opts) : nil
       end
 
       def tenant(filters={})
@@ -162,7 +163,7 @@ module Dopv
           :volume_type => attrs[:pool],
           :description => attrs[:name]
         }
-        volume = super(volume_provider, config)
+        volume = super(compute_provider, config)
         volume.wait_for { ready? }
         attach_node_volume(node_instance, volume.reload)
         volume.reload
@@ -171,32 +172,31 @@ module Dopv
       def destroy_node_volume(node_instance, volume)
         volume_instance = detach_node_volume(node_instance, volume)
         volume_instance.destroy
-        node_instance.volumes.reload
+        node_instance.volumes.all({}).reload
       end
 
       def attach_node_volume(node_instance, volume)
-        volume_instance = node_instance.volumes.all.find { |v| v.id = volume.id }
+        volume_instance = node_instance.volumes.all({}).find { |v| v.id = volume.id }
         node_instance.attach_volume(volume_instance.id, nil)
         volume_instance.wait_for { volume_instance.status.downcase == "in-use" }
         volume_instance
       end
 
       def detach_node_volume(node_instance, volume)
-        volume_instance = node_instance.volumes.all.find { |v| v.id = volume.id }
+        volume_instance = node_instance.volumes.all({}).find { |v| v.id = volume.id }
         node_instance.detach_volume(volume_instance.id)
         volume_instance.wait_for { volume_instance.status.downcase == "available" }
         volume_instance
       end
 
       def record_node_data_volume(volume)
-        ::Dopv::log.debug("Node #{nodename}: Recording volume #{volume.display_name} into DB.")
-        volume = {
-          :name => volume.display_name,
+        ::Dopv::log.debug("Node #{nodename}: Recording volume #{volume.name} into DB.")
+        super(
+          :name => volume.name,
           :id   => volume.id,
-          :pool => volume.volume_type == 'None' ? nil : volume.volume_type,
+          :pool => volume.type == 'None' ? nil : volume.type,
           :size => volume.size*GIGA_BYTE
-        }
-        super(volume)
+        )
       end
 
       def fixed_ip(subnet_id, ip_address)
@@ -225,7 +225,7 @@ module Dopv
           end
         end
         @network_ports = ports_config.map { |k,v| add_node_network_port(v.merge(:name => k)) }
-        @network_ports.collect { |p| {:port_id => p.id} }
+        @network_ports.collect { |p| {:net_id => p.network_id, :port_id => p.id} } # Net ID is required in Liberty++
       end
 
       def remove_node_network_ports(node_instance)
