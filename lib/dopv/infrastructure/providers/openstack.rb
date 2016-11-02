@@ -7,13 +7,14 @@ module Dopv
         super(node_config, data_disks_db)
 
         @compute_connection_opts = {
-          :provider               => 'openstack',
-          :openstack_username     => provider_username,
-          :openstack_api_key      => provider_password,
-          :openstack_project_name => provider_tenant,
-          :openstack_domain_id    => provider_domain_id,
-          :openstack_auth_url     => provider_url,
-          :connection_options     => {
+          :provider                => 'openstack',
+          :openstack_username      => provider_username,
+          :openstack_api_key       => provider_password,
+          :openstack_project_name  => provider_tenant,
+          :openstack_domain_id     => provider_domain_id,
+          :openstack_auth_url      => provider_url,
+          :openstack_endpoint_type => provider_endpoint_type,
+          :connection_options      => {
             :ssl_verify_peer => false,
             #:debug_request   => true
           }
@@ -38,7 +39,11 @@ module Dopv
       end
 
       def provider_domain_id
-        @node_config[:domain_id] || 'default'
+        @node_config[:domain_id]
+      end
+
+      def provider_endpoint_type
+        @node_config[:endpoint_type]
       end
 
       def config_drive?
@@ -135,7 +140,7 @@ module Dopv
         instance = compute_provider.servers.create(@node_creation_opts)
         wait_for_task_completion(instance)
         instance.reload
-        
+
         assign_security_groups(instance)
 
         instance

@@ -46,6 +46,8 @@ module Dopv
         node[:product_id] = d['product_id']
         node[:organization_name] = d['organization_name']
         node[:use_config_drive] = ([false, 'false'].include?(d['infrastructure_properties']['use_config_drive']) ? false : true) rescue true
+        node[:domain_id] = (d['infrastructure_properties'] || {}).has_key?('domain_id') ? d['infrastructure_properties']['domain_id'] : 'default'
+        node[:endpoint_type] = (d['infrastructure_properties'] || {}).has_key?('endpoint_type') ? d['infrastructure_properties']['endpoint_type'] : 'publicURL'
         # Create an empty disks array
         node[:disks] = []
         # Add disks if any
@@ -201,28 +203,18 @@ module Dopv
           end
           d['infrastructure_properties'].each do |p, v|
             case p
-            when 'datacenter'
-              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
-            when 'cluster'
-              raise PlanError, "#{error_msg} - #{p} must be a string" unless v.is_a?(String)
-            when 'keep_ha'
-              if v != true && v != false
-                raise PlanError, "#{error_msg} - #{p} must be boolean"
-              end
-            when 'affinity_groups'
-              raise PlanError, "#{error_msg} - #{p} must be array" unless v.is_a?(Array)
-            when 'dest_folder'
-              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
-            when 'default_pool'
-              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
-            when 'tenant'
-              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
-            when 'tenant_id'
-              raise PlanError, "#{error_msg} - #{p} must be string" unless v.is_a?(String)
-            when 'use_config_drive'
-              raise PlanError, "#{error_msg} - #{p} must be boolean" unless [true, false, 'true', 'false'].include?(v)
-            when 'default_security_groups'
-              raise PlanError, "#{error_msg} - #{p} must be an array of strings" unless v.is_a?(Array) && v.all? { |i| i.is_a?(String) }
+            when 'keep_ha', 'use_config_drive'
+              raise PlanError, "#{error_msg} - #{p} must be boolean" unless
+                [true, false].include?(v)
+            when 'affinity_groups', 'default_security_groups'
+              raise PlanError, "#{error_msg} - #{p} must be array of non-empty strings" unless
+                v.is_a?(Array) && v.all? { |i| i.is_a?(String) && !i.empty? }
+            when 'data_center', 'cluster', 'dest_folder', 'default_pool', 'tenant', 'tenant_id', 'domain_id'
+              raise PlanError, "#{error_msg} - #{p} must be a non-empty string" if
+                !v.is_a?(String) || v.empty?
+            when 'endpoint_type'
+              raise PlanError, "#{error_msg} - #{p} must one of 'publicURL', 'internalURL' or 'adminURL'" unless
+                v.is_a?(String) && %w(publicURL internalURL adminURL).include?(v)
             else
               raise PlanError, "#{error_msg} - unknown property #{p}"
             end

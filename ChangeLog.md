@@ -1,3 +1,14 @@
+# 0.3.8 02.11.2016
+
+## [plan]
+ * Improve parser
+ * Implement `domain_id` and `endpoint_type` infrastructure properties that
+   are required for openstack providers. The `domain_id` defaults to
+   `default` and the `endpoint_type` defaults to `publicURL`.
+
+## [openstack]
+ * Implement `provider_domain_id` and `provider_endpoint_type`
+
 # 0.3.7 01.11.2016
 
 ## [dependencies]
