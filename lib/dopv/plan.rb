@@ -8,16 +8,10 @@ module Dopv
 
     attr_reader :plan_parser
 
-    def_delegators :@plan_parser,
-      :name,
-      :nodes
+    def_delegators :@plan_parser, :name, :nodes, :valid?
 
     def initialize(plan_parser)
       @plan_parser = plan_parser
-    end
-
-    def valid?
-      @plan_parser.valid?
     end
   end
 end
