@@ -2,6 +2,9 @@
 
 ## [openstack]
  * Fix security groups removal
+ * Make sure floating IPs and network ports are removed before the node is
+   destroyed, otherwise the process leaves orphan network ports during
+   udeployment
 
 # 0.3.8 02.11.2016
 

@@ -149,9 +149,9 @@ module Dopv
       end
 
       def destroy_node_instance(node_instance, destroy_data_volumes=false)
-        super(node_instance, destroy_data_volumes)
-        remove_node_network_ports(node_instance)
         remove_node_floating_ips(node_instance)
+        remove_node_network_ports(node_instance)
+        super(node_instance, destroy_data_volumes)
       end
 
       def start_node_instance(node_instance)
