@@ -73,14 +73,14 @@ module Dopv
           nic[:nicname] = i.name
           nic[:on_boot] = 'true'
           nic[:boot_protocol] = case i.ip
-                                when 'dhcp'
+                                when :dhcp
                                   'DHCP'
-                                when 'none'
+                                when :none
                                   'NONE'
                                 else
                                   'STATIC'
                                 end
-          unless i.ip == 'dhcp' || i.ip == 'none'
+          unless [:dhcp, :none].include?(i.ip)
             nic[:ip] = i.ip
             nic[:netmask] = i.netmask
             nic[:gateway] = i.gateway if i.set_gateway?
@@ -194,14 +194,12 @@ module Dopv
       end
 
       def record_node_data_volume(volume)
-        ::Dopv::log.debug("Node #{nodename}: Recording volume #{volume.alias} into DB.")
-        volume = {
+        super(
           :name => volume.alias,
           :id   => volume.id,
           :pool => volume.storage_domain,
           :size => volume.size
-        }
-        super(volume)
+        )
       end
 
       def provider_ca_cert_file
