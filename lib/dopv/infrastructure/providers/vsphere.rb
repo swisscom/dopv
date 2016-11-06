@@ -4,6 +4,10 @@ require 'fog'
 
 module Dopv
   module Infrastructure
+    extend Forwardable
+
+    def_delegators :@plan, :product_id, :organization_name
+
     class Vsphere < Base
       def initialize(node_config, data_disks_db)
         super(node_config, data_disks_db)
@@ -20,21 +24,17 @@ module Dopv
         @node_creation_opts = {
           'name'          => nodename,
           'datacenter'    => datacenter.name,
-          'template_path' => template_path,
+          'template_path' => image,
           'dest_folder'   => dest_folder,
           'numCPUs'       => cores,
-          'memoryMB'      => memory(:megabyte),
+          'memoryMB'      => memory.mebibytes.to_i
         }
       end
 
       private
 
-      def template_path
-        @node_config[:image]
-      end
-
       def dest_folder
-        @node_config[:dest_folder] || ''
+        @dest_folder ||= infrastructure_properties.dest_folder
       end
 
       def searchdomains
@@ -73,12 +73,12 @@ module Dopv
         # Settings related to each network interface
         ip_settings = interfaces_config.collect do |i|
           ip_setting = ::RbVmomi::VIM::CustomizationIPSettings.new
-          if i[:ip_address] == 'dhcp'
+          if i.ip == :dhcp
             ip_setting.ip = ::RbVmomi::VIM::CustomizationDhcpIpGenerator.new
           else
-            ip_setting.ip = ::RbVmomi::VIM::CustomizationFixedIp('ipAddress' => i[:ip_address])
-            ip_setting.subnetMask = i[:ip_netmask]
-            ip_setting.gateway = [i[:ip_gateway]] if set_gateway?(i)
+            ip_setting.ip = ::RbVmomi::VIM::CustomizationFixedIp('ipAddress' => i.ip)
+            ip_setting.subnetMask = i.netmask
+            ip_setting.gateway = [i.gateway] if i.set_gateway?
           end
           ip_setting
         end
@@ -88,8 +88,8 @@ module Dopv
 
         # Global network settings
         global_ip_settings = RbVmomi::VIM::CustomizationGlobalIPSettings.new(
-          :dnsServerList => nameservers,
-          :dnsSuffixList => searchdomains
+          :dnsServerList => dns.name_servers,
+          :dnsSuffixList => dns.search_domains
         )
 
         # Identity settings
@@ -155,31 +155,30 @@ module Dopv
 
         # Create interfaces from scratch
         interfaces_config.each do |i|
-          log_msg = i[:virtual_switch].nil? ?
-            "Node #{nodename}: Creating interface #{i[:name]} in #{i[:network]}." :
-            "Node #{nodename}: Creating interface #{i[:name]} in #{i[:network]} (#{i[:virtual_switch]})."
+          log_msg = i.virtual_switch.nil? ?
+            "Node #{nodename}: Creating interface #{i.name} in #{i.network}." :
+            "Node #{nodename}: Creating interface #{i.name} in #{i.network} (#{i.virtual_switch})."
           ::Dopv::log.debug(log_msg)
           attrs = {
-            :name => i[:name],
+            :name => i.name,
             :datacenter => node_instance.datacenter,
-            :network => i[:network],
-            :virtualswitch => i[:virtual_switch],
+            :network => i.network,
+            :virtualswitch => i.virtual_switch,
             :type => 'VirtualVmxnet3'
           }
           add_node_nic(node_instance, attrs)
         end
       end
 
-      def add_node_volume(node_instance, attrs)
-        config = {
-          :datastore => attrs[:pool],
-          :size => get_size(attrs[:size], :kilobyte),
+      def add_node_volume(node_instance, config)
+        volume = node_instance.volumes.create(
+          :datastore => config.pool,
+          :size => config.size.kibibytes.to_i,
           :mode => 'persistent',
           :thin => true
-        }
-        volume = node_instance.volumes.create(config)
+        )
         node_instance.volumes.reload
-        volume.name = attrs[:name]
+        volume.name = config.name
         volume
       end
 
@@ -201,7 +200,7 @@ module Dopv
           :unitNumber => node_instance.volumes.collect { |v| v.unit_number }.max + 1,
           :key => -1,
           :backing => backing_info,
-          :capacityInKB => get_size(volume.size, :kilobyte)
+          :capacityInKB => volume.size * 1048576
         )
 
         device_spec = RbVmomi::VIM::VirtualDeviceConfigSpec.new(
@@ -212,7 +211,7 @@ module Dopv
         config_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
 
         reconfig_node_task(node_instance, config_spec)
-        
+
         node_instance.volumes.reload
       end
 
@@ -234,7 +233,7 @@ module Dopv
         config_spec = RbVmomi::VIM::VirtualMachineConfigSpec.new(:deviceChange => [device_spec])
 
         reconfig_node_task(node_instance, config_spec)
-        
+
         node_instance.volumes.reload
       end
 
@@ -244,7 +243,7 @@ module Dopv
           :name => volume.name,
           :id   => volume.filename,
           :pool => volume.datastore,
-          :size => volume.size*KILO_BYTE
+          :size => volume.size * 1048576 # Size must be in gibibytes
         }
         super(volume)
       end
@@ -274,7 +273,8 @@ module Dopv
           :windows8Server64Guest  => :windows
         }
 
-        lookup_table[node_instance.guest_id.to_sym] rescue nil
+        node_instance.guest_id ?
+          lookup_table[node_instance.guest_id.to_sym] : nil
       end
 
       def reconfig_node_task(node_instance, reconfig_spec)
@@ -287,34 +287,18 @@ module Dopv
         node_ref.CustomizeVM_Task(:spec => customization_spec).wait_for_completion
       end
 
-      def organization_name
-        raise ProviderError, "Organization name is not defined" unless @node_config[:organization_name]
-        @node_config[:organization_name]
-      end
-
-      def product_id
-        @node_config[:product_id] || ''
-      end
-
       def provider_pubkey_hash
-        unless @compute_connection_opts && @compute_connection_opts[:vsphere_expected_pubkey_hash]
-          unless @node_config[:provider_pubkey_hash]
-            connection = ::RbVmomi::VIM.new(
-              :host     => provider_host,
-              :port     => provider_port,
-              :ssl      => provider_scheme == 'https',
-              :ns       => 'urn:vim25',
-              :rev      => '4.0',
-              :insecure => true
-            )
-            pubkey_hash = ::Digest::SHA2.hexdigest(connection.http.peer_cert.public_key.to_s)
-            connection.close
-            pubkey_hash
-          else
-            @node_config[:provider_pubkey_hash]
-          end
-        else
-          @compute_connection_opts[:vsphere_expected_pubkey_hash]
+        unless @provider_pubkey_hash
+          connection = ::RbVmomi::VIM.new(
+            :host     => provider_host,
+            :port     => provider_port,
+            :ssl      => provider_ssl?,
+            :ns       => 'urn:vim25',
+            :rev      => '4.0',
+            :insecure => true
+          )
+          @provider_pubkey_hash ||= ::Digest::SHA2.hexdigest(connection.http.peer_cert.public_key.to_s)
+          connection.close
         end
       end
     end

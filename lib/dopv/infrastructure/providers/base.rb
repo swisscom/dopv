@@ -75,6 +75,22 @@ module Dopv
         @provider_url ||= infrastructure.endpoint.to_s
       end
 
+      def provider_host
+        @provider_host ||= infrastructure.endpoint.host
+      end
+
+      def provider_port
+        @provider_port ||= infrastructure.endpoint.port
+      end
+
+      def provider_scheme
+        @provider_scheme ||= infrastructure.endpoint.scheme
+      end
+
+      def provider_ssl?
+        provide_scheme == 'https'
+      end
+
       def root_password
         cred = credentials.find { |c| c.type == :username_password && c.username == 'root' } if
           @root_password.nil?
