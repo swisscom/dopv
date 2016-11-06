@@ -1,3 +1,17 @@
+# 0.4.0 (unreleased)
+
+## [plan]
+  * Replaced with DopCommon parser
+
+## [ovirt]
+  * Use common parser
+
+## [openstack]
+  * Use common parser
+
+## [vsphere]
+  * Use common parser
+
 # 0.3.9 06.11.2016
 
 ## [openstack]
