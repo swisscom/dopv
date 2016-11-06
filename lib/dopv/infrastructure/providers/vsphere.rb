@@ -25,7 +25,7 @@ module Dopv
           'name'          => nodename,
           'datacenter'    => datacenter.name,
           'template_path' => image,
-          'dest_folder'   => dest_folder,
+          'dest_folder'   => dest_folder || '',
           'numCPUs'       => cores,
           'memoryMB'      => memory.mebibytes.to_i
         }
