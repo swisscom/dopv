@@ -1,3 +1,8 @@
+# 0.3.9 06.11.2016
+
+## [openstack]
+ * Fix security groups removal
+
 # 0.3.8 02.11.2016
 
 ## [plan]

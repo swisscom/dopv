@@ -1,4 +1,5 @@
 require 'fog'
+require 'pry-debugger'
 
 module Dopv
   module Infrastructure
@@ -23,6 +24,7 @@ module Dopv
         @network_connection_opts = @compute_connection_opts
         @volume_connection_opts  = @compute_connection_opts
 
+        binding.pry
         @node_creation_opts = {
           :name            => nodename,
           :image_ref       => template.id,
@@ -92,7 +94,7 @@ module Dopv
         unless security_groups.empty?
           Dopv::log.info("Node #{nodename}: Assigning security groups.")
           config_sgs = security_groups.dup
-          node_instance.security_groups.each do |sg|
+          node_instance.security_groups.uniq { |g| g.id }.each do |sg|
             # Remove the security group from configuration if it is already
             # assigned to an instance.
             if config_sgs.delete(sg.name)
