@@ -13,9 +13,9 @@ module Dopv
 
       attr_reader :data_disks_db
       def_delegators :@plan, :nodename, :fqdn, :hostname, :domainname, :dns
-      def_delegators :@plan, :image, :cores, :memory, :storage, :flavor
-      def_delegators :@plan, :infrastructure, :infrastructure_properties
       def_delegators :@plan, :timezone
+      def_delegators :@plan, :full_clone?, :image, :cores, :memory, :storage, :flavor
+      def_delegators :@plan, :infrastructure, :infrastructure_properties
       def_delegator :@plan, :interfaces, :interfaces_config
       def_delegator :@plan, :data_disks, :volumes_config
       def_delegators :@plan, :credentials
@@ -61,14 +61,16 @@ module Dopv
 
       private
 
-      # TODO: Check what is this for
-      def thin_provisioned?(volume_config)
-        volume_config[:thin].nil? ? true : volume_config[:thin]
+      def provider_username
+        @provider_username ||= infrastructure.credentials.username
       end
-      # END
 
-      def set_gateway?(interface_config)
-        interface_config[:set_gateway].nil? ? true : interface_config[:set_gateway]
+      def provider_password
+        @provider_passowrd ||= infrastructure.credentials.password
+      end
+
+      def provider_url
+        @provider_url ||= infrastructure.endpoint.to_s
       end
 
       def root_password
@@ -80,7 +82,7 @@ module Dopv
       def root_ssh_pubkeys
         cred = credentials.find_all { |c| c.type == :ssh_key && c.username == 'root' } if
           @root_ssh_pubkeys.nil?
-        @root_password ||= cred.empty? ? [] : cred.collect { |k| k.public_key }.uniq
+        @root_ssh_pubkey ||= cred.empty? ? [] : cred.collect { |k| k.public_key }.uniq
       end
 
       def administrator_password
@@ -93,28 +95,32 @@ module Dopv
         'Administrator'
       end
 
+      def keep_ha?
+        @keep_ha ||= infrastructure_properties.keep_ha?
+      end
+
       def compute_provider
         Dopv::log.info("Node #{nodename}: Creating compute provider.") unless @compute_provider
         @compute_provider ||= @compute_connection_opts ? ::Fog::Compute.new(@compute_connection_opts) : nil
       end
 
       def datacenter(filters={})
-       @datacenter ||= compute_provider.datacenters(filters).find do |d|
+        @datacenter ||= compute_provider.datacenters(filters).find do |d|
           if d.is_a?(Hash) && d.has_key?(:name)
-            d[:name] == @plan[:datacenter]
-          elsif d.methods.include?(:name)
-            d.name == @plan[:datacenter]
+            d[:name] == infrastructure_properties.datacenter
+          elsif d.respond_to?(:name)
+            d.name == infrastructure_properties.datacenter
           else
             raise ProviderError, "Unsupported datacenter class #{d.class}"
           end
         end
-        raise ProviderError, "No such data center #{@plan[:datacenter]}" unless @datacenter
+        raise ProviderError, "No such data center #{infrastructure_properties.datacenter}" unless @datacenter
         @datacenter
       end
 
       def cluster(filters={})
-        @cluster ||= compute_provider.clusters(filters).find { |c| c.name == @plan[:cluster] }
-        raise ProviderError, "No such cluster #{@plan[:cluster]}" unless @cluster
+        @cluster ||= compute_provider.clusters(filters).find { |c| c.name == infrastructure_properties.cluster }
+        raise ProviderError, "No such cluster #{infrastructure_properties.cluster}" unless @cluster
         @cluster
       end
 
@@ -243,8 +249,7 @@ module Dopv
       def remove_node_affinity(node_instance, affinity)
       end
 
-      def add_node_volume(node_instance, attrs)
-        node_instance.volumes.create(attrs)
+      def add_node_volume(node_instance, config)
       end
 
       def update_node_volume(node_instance, volume, attrs)
@@ -273,7 +278,7 @@ module Dopv
         ::Dopv::log.debug("Node #{nodename}: Checking data volumes DB integrity.")
         data_volumes.each do |dv|
           # Disk exists in state DB but not in plan
-          unless volumes_config.find { |cv| dv.name == cv[:name] }
+          unless volumes_config.find { |cv| dv.name == cv.name }
             err_msg = "Inconsistent data volumes DB: Volume #{dv.name} exists in DB but not in plan"
             raise ProviderError, err_msg
           end
@@ -281,8 +286,8 @@ module Dopv
         volumes_config.each do |cv|
           # Disk exists in a plan but it is not recorded in the state DB for a
           # given node
-          if !data_volumes.empty? && !data_volumes.find { |dv| cv[:name] == dv.name }
-            ::Dopv::log.warn("Node #{nodename}: Data volume #{cv[:name]} exists in plan but not in DB.")
+          if !data_volumes.empty? && !data_volumes.find { |dv| cv.name == dv.name }
+            ::Dopv::log.warn("Node #{nodename}: Data volume #{cv.name} exists in plan but not in DB.")
           end
         end
 
@@ -300,10 +305,10 @@ module Dopv
         # Create those disks that do not exist in peristent disks DB and
         # record them into DB
         volumes_config.each do |cv|
-          unless data_disks_db.find { |v| v.name == cv[:name] }
-            ::Dopv::log.debug("Node #{nodename}: Creating disk #{cv[:name]} [#{cv[:size]}].")
+          unless data_disks_db.find { |v| v.name == cv.name }
+            ::Dopv::log.debug("Node #{nodename}: Creating disk #{cv.name} [#{cv.size.g} G].")
             volume = add_node_volume(node_instance, cv)
-            record_node_data_volume(volume)
+            record_node_data_volume(volume) unless volume.nil?
           end
         end
       end

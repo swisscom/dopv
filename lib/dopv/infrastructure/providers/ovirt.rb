@@ -1,14 +1,12 @@
 require 'fog'
 require 'uri'
 require 'open-uri'
-require 'pry-byebug'
 
 module Dopv
   module Infrastructure
     class Ovirt < Base
       def initialize(plan, data_disks_db)
         super(plan, data_disks_db)
-        binding.pry
 
         @compute_connection_opts = {
           :provider           => 'ovirt',
@@ -22,22 +20,16 @@ module Dopv
           :name               => nodename,
           :template           => template.id,
           :cores              => cores,
-          :memory             => memory,
-          :storage            => storage,
+          :memory             => memory.bytes,
+          :storage            => storage.bytes,
           :cluster            => cluster.id,
           :ha                 => keep_ha?,
           :clone              => full_clone?,
-          :storagedomain_name => default_pool
+          :storagedomain_name => infrastructure_properties.default_pool
         }
       end
 
       private
-
-      # NOTE: this can be removed once storage domains glitches are fixed on
-      # OVirt/RHEV side.
-      def full_clone?
-        !default_pool.nil? && !default_pool.empty? && super != true ? true : super
-      end
 
       def compute_provider
         unless @compute_provider
@@ -69,18 +61,18 @@ module Dopv
         ::Dopv::log.info("Node #{nodename}: Customizing node.")
         customization_opts = {
           :hostname => fqdn,
-          :dns => nameservers,
-          :domain => searchdomains,
+          :dns => dns.name_servers,
+          :domain => dns.search_domains,
           :user => 'root',
           :password => root_password,
-          :ssh_authorized_keys => root_ssh_keys
+          :ssh_authorized_keys => root_ssh_pubkeys
         }
 
         customization_opts[:nicsdef] = interfaces_config.collect do |i|
           nic = {}
-          nic[:nicname] = i[:name]
+          nic[:nicname] = i.name
           nic[:on_boot] = 'true'
-          nic[:boot_protocol] = case i[:ip_address]
+          nic[:boot_protocol] = case i.ip
                                 when 'dhcp'
                                   'DHCP'
                                 when 'none'
@@ -88,10 +80,10 @@ module Dopv
                                 else
                                   'STATIC'
                                 end
-          unless i[:ip_address] == 'dhcp' || i[:ip_address] == 'none'
-            nic[:ip] = i[:ip_address]
-            nic[:netmask] = i[:ip_netmask]
-            nic[:gateway] = i[:ip_gateway] if i[:set_gateway]
+          unless i.ip == 'dhcp' || i.ip == 'none'
+            nic[:ip] = i.ip
+            nic[:netmask] = i.netmask
+            nic[:gateway] = i.gateway if i.set_gateway?
           end
           nic
         end
@@ -150,10 +142,10 @@ module Dopv
         ic = interfaces_config.reverse
         node_instance.interfaces.sort_by do |n| n.mac
           i = ic.pop
-          ::Dopv::log.debug("Node #{nodename}: Configuring interface #{n.name} (#{n.mac}) as #{i[:name]} in #{i[:network]}.")
+          ::Dopv::log.debug("Node #{nodename}: Configuring interface #{n.name} (#{n.mac}) as #{i.name} in #{i.network}.")
           attrs = {
-            :name => i[:name],
-            :network_name => i[:network],
+            :name => i.name,
+            :network_name => i.network,
           }
           update_node_nic(node_instance, n, attrs)
         end
@@ -166,25 +158,21 @@ module Dopv
         node_instance.add_to_affinity_group(:id => affinity_group.id)
       end
 
-      def add_node_volume(node_instance, attrs)
-        storage_domain_name = attrs[:pool] || default_pool # try to default to 'default_pool'
-        storage_domain = compute_provider.storage_domains.find { |d| d.name == storage_domain_name }
+      def add_node_volume(node_instance, config)
+        storage_domain = compute_provider.storage_domains.find { |d| d.name == config.pool }
         raise ProviderError, "No such storage domain #{storage_domain_name}" unless storage_domain
 
-        config = {
-          :alias => attrs[:name],
-          :size => get_size(attrs[:size]),
-          :bootable => 'false',
-          :wipe_after_delete => 'true',
-          :storage_domain => storage_domain.id,
-        }
-
-        config.merge!(:format => 'raw', :sparse => 'false') unless thin_provisioned?(attrs)
-
-        node_instance.add_volume(config)
+        node_instance.add_volume(
+          {
+            :alias => config.name,
+            :size => config.size.bytes,
+            :bootable => 'false',
+            :wipe_after_delete => 'true',
+            :storage_domain => storage_domain.id
+          }.tap { |h| (h[:format] = 'raw'; h[:sparse] = 'false') unless config.thin? }
+        )
         wait_for_task_completion(node_instance)
-        # This call updates the list of volumes -> no need to call reload.
-        node_instance.volumes.find { |v| v.alias == config[:alias] }
+        node_instance.volumes.find { |v| v.alias == config.name } # TODO: Rewrite with volume.reload if possible
       end
 
       def destroy_node_volume(node_instance, volume)
@@ -217,8 +205,9 @@ module Dopv
       end
 
       def provider_ca_cert_file
-        local_ca_file = "#{TMP}/#{provider_host}_#{provider_port}_ca.crt"
-        remote_ca_file = "#{provider_scheme}://#{provider_host}:#{provider_port}/ca.crt"
+        uri = infrastructure.endpoint
+        local_ca_file = "#{TMP}/#{uri.host}_#{uri.port}_ca.crt"
+        remote_ca_file = "#{uri.scheme}://#{uri.host}:#{uri.port}/ca.crt"
         unless File.exists?(local_ca_file)
           begin
             open(remote_ca_file, :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE) do |remote_ca|
