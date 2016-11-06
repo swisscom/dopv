@@ -26,9 +26,4 @@ module Dopv
       end
     end
   end
-
-  def self.plan_valid?(plan_file)
-    plan = load_plan(plan_file)
-    plan.valid?
-  end
 end
