@@ -4,8 +4,13 @@ require 'pry-debugger'
 module Dopv
   module Infrastructure
     class OpenStack < Base
+      extend Forwardable
+
+      def_delegator :@plan, :flavor, :flavor_name
+
       def initialize(node_config, data_disks_db)
         super(node_config, data_disks_db)
+
 
         @compute_connection_opts = {
           :provider                => 'openstack',
@@ -29,7 +34,7 @@ module Dopv
           :name            => nodename,
           :image_ref       => template.id,
           :flavor_ref      => flavor.id,
-          :config_drive    => config_drive?,
+          :config_drive    => use_config_drive?,
           :security_groups => security_groups
         }
       end
@@ -37,27 +42,23 @@ module Dopv
       private
 
       def provider_tenant
-        @node_config[:tenant]
+        @provider_tenant ||= infrastructure_properties.tenant
       end
 
       def provider_domain_id
-        @node_config[:domain_id]
+        @provider_domain_id ||= infrastructure_properties.domain_id
       end
 
       def provider_endpoint_type
-        @node_config[:endpoint_type]
+        @provider_endpoint_type ||= infrastructure_properties.endpoint_type
       end
 
-      def config_drive?
-        @node_config[:use_config_drive]
+      def use_config_drive?
+        @use_config_drive ||= infrastructure_properties.use_config_drive?
       end
 
       def security_groups
-        @node_config[:security_groups]
-      end
-
-      def nameservers
-        ns_config[:nameserver].join(" ") rescue nil
+        @security_groups ||= infrastructure_properties.security_groups
       end
 
       def network_provider
@@ -65,14 +66,7 @@ module Dopv
         @network_provider ||= @network_connection_opts ? ::Fog::Network.new(@network_connection_opts) : nil
       end
 
-      def tenant(filters={})
-        @tenant ||= compute_provider.tenants(filters).find { |t| t.name == @node_config[:tenant] }
-        raise ProviderError, "No such tenant #{@node_config[:tenant]}" unless @tenant
-        @tenant
-      end
-
       def flavor(filters={})
-        flavor_name = @node_config[:flavor] || 'm1.medium'
         @flavor ||= compute_provider.flavors(filters).find { |f| f.name == flavor_name }
         raise ProviderError, "No such flavor #{flavor_name}" unless @flavor
         @flavor
@@ -162,15 +156,16 @@ module Dopv
         node_instance.wait_for { !ready? }
       end
 
-      def add_node_volume(node_instance, attrs)
-        config = {
-          :name => attrs[:name],
-          :display_name => attrs[:name],
-          :size => get_size(attrs[:size], :gigabyte),
-          :volume_type => attrs[:pool],
-          :description => attrs[:name]
-        }
-        volume = super(compute_provider, config)
+      def add_node_volume(node_instance, config)
+        volume = super(
+          compute_provider, {
+            :name => config.name,
+            :display_name => config.name,
+            :size => config.size.gibibytes.to_i,
+            :volume_type => config.pool,
+            :description => config.name
+          }
+        )
         volume.wait_for { ready? }
         attach_node_volume(node_instance, volume.reload)
         volume.reload
@@ -197,18 +192,17 @@ module Dopv
       end
 
       def record_node_data_volume(volume)
-        ::Dopv::log.debug("Node #{nodename}: Recording volume #{volume.name} into DB.")
         super(
           :name => volume.name,
           :id   => volume.id,
           :pool => volume.type == 'None' ? nil : volume.type,
-          :size => volume.size*GIGA_BYTE
+          :size => volume.size * 1073741824 # Returned in gibibytes
         )
       end
 
       def fixed_ip(subnet_id, ip_address)
         rval = { :subnet_id => subnet_id }
-        %w(dhcp none).include?(ip_address) ? rval : rval.merge(:ip_address => ip_address)
+        [:dhcp, :none].include?(ip_address) ? rval : rval.merge(:ip_address => ip_address)
       end
 
       def add_node_network_port(attrs)
@@ -220,14 +214,14 @@ module Dopv
         ::Dopv::log.info("Node #{nodename}: Adding network ports.")
         ports_config = {}
         interfaces_config.each do |i|
-          s = subnet(i[:network])
+          s = subnet(i.network)
           port_name = "#{nodename}_#{s.network_id}"
           if ports_config.has_key?(port_name)
-              ports_config[port_name][:fixed_ips] << fixed_ip(s.id, i[:ip_address])
+              ports_config[port_name][:fixed_ips] << fixed_ip(s.id, i.ip)
           else
             ports_config[port_name] = {
               :network_id => s.network_id,
-              :fixed_ips => [fixed_ip(s.id, i[:ip_address])]
+              :fixed_ips => [fixed_ip(s.id, i.ip)]
             }
           end
         end
@@ -238,7 +232,7 @@ module Dopv
       def remove_node_network_ports(node_instance)
         ::Dopv::log.warn("Node #{nodename}: Removing network ports.")
         @network_ports ||= network_provider.ports.select { |p| p.device_id == node_instance.id } rescue {}
-        @network_ports.each { |p| p.destroy rescue nil }
+        @network_ports.each { |p| p.destroy rescue nil } # TODO: dangerous, rewrite
         @network_ports = {}
       end
 
@@ -251,15 +245,15 @@ module Dopv
         ::Dopv::log.info("Node #{nodename}: Adding floating IPs.")
         @network_ports ||= network_provider.ports.select { |p| p.device_id == node_instance.id }
         interfaces_config.each do |i|
-          if i[:floating_network]
-            floating_network = network(i[:floating_network])
-            subnetwork = subnet(i[:network])
+          if i.floating_network
+            floating_network = network(i.floating_network)
+            subnetwork = subnet(i.network)
             port = @network_ports.find { |p| p.fixed_ips.find { |f| f["subnet_id"] == subnetwork.id } }
             attrs = {
               :floating_network_id => floating_network.id,
               :port_id => port.id,
               :fixed_ip_address => port.fixed_ips.first["ip_address"],
-              :nicname => i[:name]
+              :nicname => i.name
             }
             add_node_floating_ip(attrs)
           end
@@ -273,7 +267,7 @@ module Dopv
           floating_ips = network_provider.floating_ips.select do |f|
             node_instance.floating_ip_addresses.include?(f.floating_ip_address)
           end
-          floating_ips.each { |f| f.destroy rescue nil }
+          floating_ips.each { |f| f.destroy rescue nil } # TODO: dangerous, rewrite
         end
       end
       alias_method :remove_node_nics, :remove_node_floating_ips
@@ -293,12 +287,12 @@ module Dopv
             "  expire: False\n"
         end
 
-        if root_ssh_keys
+        unless root_ssh_pubkeys.empty?
           config <<                       \
             "users:\n"                    \
             "  - name: root\n"            \
             "    ssh_authorized_keys:\n"
-          root_ssh_keys.each { |k| config << "      - #{k}\n" }
+          root_ssh_pubkeys.each { |k| config << "      - #{k}\n" }
         end
 
         config <<
