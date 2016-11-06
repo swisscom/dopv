@@ -1,5 +1,4 @@
 require 'fog'
-require 'pry-debugger'
 
 module Dopv
   module Infrastructure
@@ -29,7 +28,6 @@ module Dopv
         @network_connection_opts = @compute_connection_opts
         @volume_connection_opts  = @compute_connection_opts
 
-        binding.pry
         @node_creation_opts = {
           :name            => nodename,
           :image_ref       => template.id,
