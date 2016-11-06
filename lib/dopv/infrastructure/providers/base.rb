@@ -5,7 +5,9 @@ require 'fog'
 module Dopv
   module Infrastructure
     class ProviderError < StandardError
-      def exit_code; 4; end
+      def exit_code
+        4
+      end
     end
 
     class Base
@@ -250,6 +252,7 @@ module Dopv
       end
 
       def add_node_volume(node_instance, config)
+        node_instance.volumes.create(config)
       end
 
       def update_node_volume(node_instance, volume, attrs)
@@ -314,7 +317,7 @@ module Dopv
       end
 
       def record_node_data_volume(volume)
-        ::Dopv::log.debug("Node #{nodename} Recording data volume #{volume[:name]} from data volumes DB.")
+        ::Dopv::log.debug("Node #{nodename} Recording data volume #{volume[:name]} into data volumes DB.")
         data_disks_db << volume.merge(:node => nodename)
         data_disks_db.save
       end
