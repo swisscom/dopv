@@ -1,7 +1,7 @@
 # 0.4.0 (unreleased)
 
 ## [plan]
-  * Replaced with DopCommon parser
+  * Replaced with DopCommon parser v0.9.0
 
 ## [ovirt]
   * Use common parser

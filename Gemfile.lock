@@ -9,10 +9,10 @@ GIT
 
 GIT
   remote: https://gitlab.swisscloud.io/clu-dop/dop_common.git
-  revision: afb13868b392e8fe51d658cf8c09329238898d5c
-  branch: master
+  revision: b5a29ef1d6b55fb96403fb5ea4ad5a36b56e5ec0
+  tag: v0.9.0
   specs:
-    dop_common (0.8.1)
+    dop_common (0.9.0)
       hashdiff
       lockfile
       rb-inotify
@@ -22,7 +22,7 @@ PATH
   specs:
     dopv (0.4.0)
       colorize (~> 0.7.5)
-      dop_common (~> 0.8.1)
+      dop_common (~> 0.9.0)
       fog (~> 1.36.0)
       fog-google (< 0.1.1)
       fog-profitbricks (~> 0.0.5)
@@ -237,7 +237,7 @@ PLATFORMS
 
 DEPENDENCIES
   bundler (~> 1.3)
-  dop_common (= 0.8.1)!
+  dop_common (= 0.9.0)!
   dopv!
   guard-ctags-bundler
   listen (~> 3.0.8)
