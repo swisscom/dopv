@@ -61,7 +61,7 @@ module Dopv
 
       def create_node_instance
         ::Dopv::log.info("Node #{nodename}: Creating node instance.")
-        @node_creation_opts['datastore'] = default_pool if default_pool
+        @node_creation_opts['datastore'] = infrastructure_properties.default_pool unless infrastructure_properties.default_pool.nil?
         vm = compute_provider.vm_clone(@node_creation_opts.merge(
           'power_on'  => false,
           'wait'      => true))
@@ -300,6 +300,7 @@ module Dopv
           @provider_pubkey_hash ||= ::Digest::SHA2.hexdigest(connection.http.peer_cert.public_key.to_s)
           connection.close
         end
+        @provider_pubkey_hash
       end
     end
   end

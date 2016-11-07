@@ -88,7 +88,7 @@ module Dopv
       end
 
       def provider_ssl?
-        provide_scheme == 'https'
+        provider_scheme == 'https'
       end
 
       def root_password
