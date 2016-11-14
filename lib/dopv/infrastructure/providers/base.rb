@@ -22,18 +22,18 @@ module Dopv
       def_delegator :@plan, :data_disks, :volumes_config
       def_delegators :@plan, :credentials
 
-      def self.bootstrap_node(plan, data_disks_db)
-        new(plan, data_disks_db).bootstrap_node
+      def self.bootstrap_node(plan, state_store)
+        new(plan, state_store).bootstrap_node
       end
 
-      def self.destroy_node(plan, data_disks_db, destroy_data_volumes=false)
-        new(plan, data_disks_db).destroy_node(destroy_data_volumes)
+      def self.destroy_node(plan, state_store, destroy_data_volumes=false)
+        new(plan, state_store).destroy_node(destroy_data_volumes)
       end
 
-      def initialize(plan, data_disks_db)
+      def initialize(plan, state_store)
         @compute_provider = nil
         @plan = plan
-        @data_disks_db = data_disks_db
+        @data_disks_db = Dopv::PersistentDisk::DB.new(state_store, nodename)
       end
 
       def bootstrap_node
@@ -189,7 +189,7 @@ module Dopv
         if node_instance
           stop_node_instance(node_instance)
 
-          volumes = data_disks_db.select { |v| v.node == nodename }
+          volumes = data_disks_db.volumes
           volumes.each do |v|
             if destroy_data_volumes
               ::Dopv::log.warn("Node #{nodename} Destroying data volume #{v.name}.")
@@ -291,7 +291,7 @@ module Dopv
         ::Dopv::log.info("Node #{nodename}: Adding data volumes.")
 
         ::Dopv::log.debug("Node #{nodename}: Loading data volumes DB.")
-        data_volumes = data_disks_db.select { |dv| dv.node == nodename }
+        data_volumes = data_disks_db.volumes
 
         # Check if persistent disks DB is consistent
         ::Dopv::log.debug("Node #{nodename}: Checking data volumes DB integrity.")
@@ -324,7 +324,7 @@ module Dopv
         # Create those disks that do not exist in peristent disks DB and
         # record them into DB
         volumes_config.each do |cv|
-          unless data_disks_db.find { |v| v.name == cv.name }
+          unless data_disks_db.volumes.find { |v| v.name == cv.name }
             ::Dopv::log.debug("Node #{nodename}: Creating disk #{cv.name} [#{cv.size.g} G].")
             volume = add_node_volume(node_instance, cv)
             record_node_data_volume(volume) unless volume.nil?
@@ -335,13 +335,11 @@ module Dopv
       def record_node_data_volume(volume)
         ::Dopv::log.debug("Node #{nodename} Recording data volume #{volume[:name]} into data volumes DB.")
         data_disks_db << volume.merge(:node => nodename)
-        data_disks_db.save
       end
 
       def erase_node_data_volume(volume)
         ::Dopv::log.debug("Node #{nodename} Erasing data volume #{volume.name} from data volumes DB.")
         data_disks_db.delete(volume)
-        data_disks_db.save
       end
 
       def add_node_affinity(node_instance, name)

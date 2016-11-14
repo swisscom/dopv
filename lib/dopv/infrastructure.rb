@@ -21,14 +21,14 @@ module Dopv
       klass_name.split('::').inject(Object) { |res, i| res.const_get(i) }
     end
 
-    def self.bootstrap_node(plan, data_disk_db)
+    def self.bootstrap_node(plan, state_store)
       provider = load_provider(plan.infrastructure.provider)
-      provider.bootstrap_node(plan, data_disk_db)
+      provider.bootstrap_node(plan, state_store)
     end
 
-    def self.destroy_node(plan, data_disk_db, destroy_data_volumes=false)
+    def self.destroy_node(plan, state_store, destroy_data_volumes=false)
       provider = load_provider(plan.infrastructure.provider)
-      provider.destroy_node(plan, data_disk_db, destroy_data_volumes)
+      provider.destroy_node(plan, state_store, destroy_data_volumes)
     end
   end
 end

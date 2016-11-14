@@ -2,10 +2,6 @@ require 'yaml'
 
 module Dopv
   module PersistentDisk
-    def self.load(db_file)
-      DB.new(db_file)
-    end
-
     class PersistentDiskError < StandardError; end
 
     class Entry
@@ -45,7 +41,7 @@ module Dopv
         @size = attrs[:size].to_i if attrs[:size]
         self
       end
-      
+
       def to_s
         "Disk: #{@name}\n  Node: #{@node}\n  Id: #{@id}\n  Pool: #{@pool}\n  Size: #{@size}"
       end
@@ -56,45 +52,33 @@ module Dopv
     end
 
     class DB
-      @@db = nil
-      @@dirty = false
 
-      @db_file = nil
-
-      def initialize(db_file)
-        @db_file = db_file
-        @@db = load_file if @@db.nil?
-      end
-      
-      def each(&block)
-        @@db.each(&block)
+      def initialize(state_store, node_name)
+        @state_store = state_store
+        @node_name = node_name
       end
 
-      def find
-        each {|disk| return disk if yield(disk)}
-        nil
+      def volumes
+        @state_store.transaction(true) { entries }
       end
 
-      def select 
-        disks = []
-        each {|disk| disks << disk if yield(disk)}
-        disks
-      end
-      
       def append(entry)
-        each do |disk|
-          if disk == entry
-            raise PersistentDiskError, "Disk #{disk.name} already exists for node #{disk.node}"
+        @state_store.transaction do
+          entries.each do |disk|
+            if disk == entry
+              raise PersistentDiskError, "Disk #{disk.name} already exists for node #{disk.node}"
+            end
+          end
+          if entry.is_a?(Entry)
+            @entries << entry
+            @state_store[:data_volumes][@node_name] << entry.to_hash
+          else
+            @entries << Entry.new(entry)
+            @state_store[:data_volumes] << entry
           end
         end
-        if entry.is_a?(Entry)
-          @@db << entry
-        else
-          @@db << Entry.new(entry)
-        end
-        @@dirty = true
       end
-      
+
       def <<(entry)
         append(entry)
       end
@@ -104,65 +88,40 @@ module Dopv
       end
 
       def update(entry, attrs={})
-        case entry
-        when Entry
-          find_proc = Proc.new { |disk| disk == entry }
-        when Hash
-          raise PersistentDiskError, "Entry hash must contain a node name" unless entry.has_key?(:node)
-          raise PersistentDiskError, "Entry hash must contain a disk name" unless entry.has_key?(:name)
-          find_proc = Proc.new { |disk| disk.node == entry[:node] && disk.name == entry[:name] }
-        else
-          raise PersistentDiskError, "Disk entry must be Hash or Entry"
+        @state_store.transaction do
+          index = entries.index {|stored_entry| stored_entry = entry}
+          if index.nil?
+            raise PersistentDiskError, "Entry update: Disk entry not found #{entry.to_s}"
+          end
+          @entries[index].update(attrs)
+          @state_store[:data_volumes][@node_name][index] = @entries[index]
+          @entries[index]
         end
-
-        (disk = find(&find_proc)) && disk.update(attrs) && @@dirty = true && disk
       end
 
       def delete(entry)
-        case entry
-        when Entry
-          find_proc = Proc.new { |disk| disk == entry }
-        when Hash
-          raise PersistentDiskError, "Entry hash must contain at least a node name" unless entry.has_key?(:node)
-          if entry.has_key?(:name)
-            find_proc = Proc.new { |disk| disk.node == entry[:node] && disk.name == entry[:name] }
-          else
-            find_proc = Proc.new { |disk| disk.node == entry[:node] }
+        @state_store.transaction do
+          index = entries.index {|stored_entry| stored_entry = entry}
+          if index.nil?
+            raise PersistentDiskError, "Entry update: Disk entry not found #{entry.to_s}"
           end
-        end
 
-        disk = find(&find_proc)
-        @@db.reject!(&find_proc) && @@dirty = true && disk
+          @entries.detele_at(index)
+          @state_store[:data_volumes][@node_name].detele_at(index)
+          entry
+        end
       end
 
-      def load_file
-        ::Dopv::log.info("Loading data disks DB.")
-        db = []
-        begin
-          YAML.load_file(@db_file).each do |k, v|
-            v.each {|entry| db << Entry.new(Hash[entry.map {|k1, v1| [k1.to_sym, v1]}].merge(:node => k))}
-          end
-        rescue
-          []
-        end
-        db
-      end
-      
-      def to_yaml
-        db = {}
-        each { |disk| (db[disk.node] ||= []) << disk.to_hash.inject({}) { |h,(k,v)| h[k.to_s] = v; h} }
-        db.to_yaml
-      end
-      
-      def save(force=false)
-        if @@dirty || force
-          File.open(@db_file, 'w') {|f| f.write(to_yaml)} unless @db_file.nil?
+      private
+
+      def entries
+        @entries ||= @state_store[:data_volumes][@node_name].map do |raw_entry|
+          symbolized_entry = Hash[raw_entry.map {|k1, v1| [k1.to_sym, v1] }]
+          merged_entry = symbolized_entry.merge({:node => @node_name})
+          Dopv::PersistentDisk::Entry.new(merged_entry)
         end
       end
-      
-      def to_s
-        each {|disk| disk.to_s}
-      end
+
     end
   end
 end
