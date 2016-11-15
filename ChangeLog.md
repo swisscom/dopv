@@ -1,5 +1,7 @@
 # 0.4.1 15.11.2016
  * Revert `#895e4cdbf65`
+ * Reimplement logging
+ * Update to `dop_common` 0.9.1
 
 # 0.4.0 14.11.2016
 
