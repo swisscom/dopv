@@ -6,8 +6,8 @@ require 'dopv/version'
 Gem::Specification.new do |spec|
   spec.name          = "dopv"
   spec.version       = Dopv::VERSION
-  spec.authors       = ["Pavol Dilung"]
-  spec.email         = ["pavol.dilung@swisscom.com"]
+  spec.authors       = ["Pavol Dilung", "Andreas Zuber"]
+  spec.email         = ["pavol.dilung@swisscom.com", "azuber@puzzle.ch"]
   spec.description   = %q{Deployment orchestrator for VMs}
   spec.summary       = %q{Deployment orchestrator for VMs}
   spec.homepage      = "https://gitlab.swisscloud.io/clu-dop/dopv/tree/master"
