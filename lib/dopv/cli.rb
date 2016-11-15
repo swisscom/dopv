@@ -4,6 +4,7 @@
 
 require 'gli'
 require 'dopv'
+require 'dopv/cli/command_validate'
 
 PROGNAME = 'dopv'
 
@@ -49,6 +50,8 @@ module Dopv
       true
     end
 
+    command_validate(self)
+
     desc 'Deploy a plan'
     command :deploy do |c|
       c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
@@ -83,14 +86,6 @@ module Dopv
           end
           Dopv.remove(plan_name, true)
         end
-      end
-    end
-
-    desc 'Validate plan file'
-    command :validate do |c|
-      c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
-      c.action do |global_options,options,args|
-        Dopv.valid?(options[:plan]) ? puts('Plan valid.') : puts('Plan is NOT valid!')
       end
     end
 
