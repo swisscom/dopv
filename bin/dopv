@@ -23,7 +23,7 @@ module GLIWrapper
 
   desc 'Log file'
   arg_name 'path_to_log_file'
-  default_value 'STDOUT'
+  default_value nil
   flag [:logfile, :l]
 
   desc 'Verbosity of the command line tool'
@@ -35,16 +35,15 @@ module GLIWrapper
   switch [:trace, :t]
 
   pre do |global_options,command,options,args|
-    ::Dopv.log(global_options[:logfile] == 'STDOUT' ? STDOUT : global_options[:logfile])
+    ::Dopv.init_file_logger(global_options[:logfile] || STDOUT)
     ::Dopv.log.progname = PROGNAME
     ::Dopv.log.level = ::Logger.const_get(global_options[:verbosity].upcase)
     trace = global_options[:trace]
-
     true
   end
 
   on_error do |exception|
-    ::Dopv::log.fatal {"#{exception.message}"}
+    ::Dopv.log.fatal {"#{exception.message}"}
     STDERR.puts "\n#{exception.backtrace.join("\n")}" if trace
 
     true
@@ -55,9 +54,9 @@ module GLIWrapper
     c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
     c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
     c.action do |global_options,options,args|
-      plan = ::Dopv::load_plan(options[:plan])
-      data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
-      ::Dopv::run_plan(plan, data_volumes_db, :deploy)
+      plan = ::Dopv.load_plan(options[:plan])
+      data_volumes_db = ::Dopv.load_data_volumes_db(options[:diskdb])
+      ::Dopv.run_plan(plan, data_volumes_db, :deploy)
     end
   end
 
@@ -67,9 +66,9 @@ module GLIWrapper
     c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
     c.switch [:rmdisk, :r]
     c.action do |global_options,options,args|
-      plan = ::Dopv::load_plan(options[:plan])
-      data_volumes_db = ::Dopv::load_data_volumes_db(options[:diskdb])
-      ::Dopv::run_plan(plan, data_volumes_db, :undeploy, options[:rmdisk])
+      plan = ::Dopv.load_plan(options[:plan])
+      data_volumes_db = ::Dopv.load_data_volumes_db(options[:diskdb])
+      ::Dopv.run_plan(plan, data_volumes_db, :undeploy, options[:rmdisk])
     end
   end
 
@@ -77,7 +76,7 @@ module GLIWrapper
   command :validate do |c|
     c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
     c.action do |global_options,options,args|
-      ::Dopv::plan_valid?(options[:plan]) ? puts('Plan valid.') : puts('Plan is NOT valid!')
+      ::Dopv.plan_valid?(options[:plan]) ? puts('Plan valid.') : puts('Plan is NOT valid!')
     end
   end
 
