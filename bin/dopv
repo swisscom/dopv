@@ -97,3 +97,5 @@ module GLIWrapper
 
   exit run(ARGV)
 end
+require 'dopv/cli'
+exit Dopv::Cli.run(ARGV)
