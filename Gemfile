@@ -1,7 +1,8 @@
 source 'https://rubygems.org'
 
 # dop common
-gem 'dop_common', '0.9.0', :git => 'https://gitlab.swisscloud.io/clu-dop/dop_common.git', :tag => 'v0.9.0'
+gem 'dop_common', '0.9.1', :git => 'https://gitlab.swisscloud.io/clu-dop/dop_common.git'
+#gem 'dop_common', '0.9.1', :git => 'https://gitlab.swisscloud.io/clu-dop/dop_common.git', :tag => 'v0.9.0'
 #gem 'dop_common', '0.8.1', :git => 'https://gitlab.swisscloud.io/clu-dop/dop_common.git', :branch => 'master'
 #gem 'dop_common', '0.8.1', :path => '../dop_common', :branch => 'master'
 
