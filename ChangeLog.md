@@ -1,4 +1,7 @@
-# 0.4.0 (unreleased)
+# 0.4.1 15.11.2016
+ * Revert `#895e4cdbf65`
+
+# 0.4.0 14.11.2016
 
 ## [plan]
   * Replaced with DopCommon parser v0.9.0
