@@ -1,7 +1,14 @@
+# 0.5.0 (unreleased)
+
 # 0.4.1 15.11.2016
  * Revert `#895e4cdbf65`
  * Reimplement logging
  * Update to `dop_common` 0.9.1
+
+## [disk db]
+ * Update the disk DB to use `dop_common` plan store while keeping the
+   possibility to dump the file.
+>>>>>>> Version bump to 0.5.0
 
 # 0.4.0 14.11.2016
 
