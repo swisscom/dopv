@@ -86,10 +86,7 @@ module Dopv
       def <<(entry)
         append(entry)
       end
-
-      def add(entry)
-        append(entry)
-      end
+      alias_method :add, :<<
 
       def update(entry, attrs={})
         @state_store.transaction do
