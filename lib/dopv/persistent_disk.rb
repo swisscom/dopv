@@ -110,8 +110,8 @@ module Dopv
             raise PersistentDiskError, "Entry update: Disk entry not found #{entry.to_s}"
           end
 
-          @entries.detele_at(index)
-          @state_store[:data_volumes][@node_name].detele_at(index)
+          @entries.delete_at(index)
+          @state_store[:data_volumes][@node_name].delete_at(index)
           entry
         end
       end
