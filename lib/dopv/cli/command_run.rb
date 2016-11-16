@@ -15,6 +15,12 @@ module Dopv
           c.default_value nil
           c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
 
+          if action == :undeploy
+            c.desc 'Remove the disks'
+            c.default_value false
+            c.switch [:rmdisk, :r]
+          end
+
           c.action do |global_options,options,args|
             remove = false
             plan_name = nil
@@ -47,7 +53,7 @@ module Dopv
             begin
               case action
               when :deploy   then Dopv.deploy(plan_name)
-              when :undeploy then Dopv.undeploy(plan_name)
+              when :undeploy then Dopv.undeploy(plan_name, options[:rmdisk])
               end
             ensure
               Dopv.export_state_file(plan_name, options[:diskdb]) if export
