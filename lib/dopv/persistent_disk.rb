@@ -56,6 +56,10 @@ module Dopv
       def initialize(state_store, node_name)
         @state_store = state_store
         @node_name = node_name
+        @state_store.transaction do
+          @state_store[:data_volumes] ||= {}
+          @state_store[:data_volumes][@node_name] ||= []
+        end
       end
 
       def volumes
@@ -74,7 +78,7 @@ module Dopv
             @state_store[:data_volumes][@node_name] << entry.to_hash
           else
             @entries << Entry.new(entry)
-            @state_store[:data_volumes] << entry
+            @state_store[:data_volumes][@node_name] << entry
           end
         end
       end
