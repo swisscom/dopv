@@ -11,7 +11,7 @@ module Dopv
     :info     => :green,
     :debug    => :default
   }
-  
+
   def self.logger=(logger)
     @log = logger
     ::DopCommon.logger = logger
@@ -21,7 +21,6 @@ module Dopv
     ::Dopv.logger = Logger.new(logfile)
     @log.formatter = file_logger_formatter
     @log.level = Logger::INFO
-    ::DopCommon.add_log_junction(@log)
   end
 
   def self.file_logger_formatter
