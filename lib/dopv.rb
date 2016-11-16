@@ -65,11 +65,21 @@ module Dopv
     state_store.export
   end
 
+  def self.export_state_file(plan_name, state_file)
+    File.open(state_file, 'w+') do |diskdb|
+      diskdb << YAML.dump(Dopv.export_state(plan_name))
+    end
+  end
+
   def self.import_state(plan_name, data_volumes_db)
     plan_store.run_lock(plan_name) do
       state_store = Dopv::StateStore.new(plan_name, plan_store)
       state_store.import(data_volumes_db)
     end
+  end
+
+  def self.import_state_file(plan_name, state_file)
+    Dopv.import_state(plan_name, YAML.load_file(state_file))
   end
 
   private
