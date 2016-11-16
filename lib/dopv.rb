@@ -61,17 +61,20 @@ module Dopv
   end
 
   def self.export_state(plan_name)
+    ensure_plan_exists(plan_name)
     state_store = Dopv::StateStore.new(plan_name, plan_store)
     state_store.export
   end
 
   def self.export_state_file(plan_name, state_file)
+    ensure_plan_exists(plan_name)
     File.open(state_file, 'w+') do |diskdb|
       diskdb << YAML.dump(Dopv.export_state(plan_name))
     end
   end
 
   def self.import_state(plan_name, data_volumes_db)
+    ensure_plan_exists(plan_name)
     plan_store.run_lock(plan_name) do
       state_store = Dopv::StateStore.new(plan_name, plan_store)
       state_store.import(data_volumes_db)
@@ -79,6 +82,7 @@ module Dopv
   end
 
   def self.import_state_file(plan_name, state_file)
+    ensure_plan_exists(plan_name)
     Dopv.import_state(plan_name, YAML.load_file(state_file))
   end
 
@@ -86,6 +90,12 @@ module Dopv
 
   def self.plan_store
     @plan_store ||= DopCommon::PlanStore.new(plan_store_dir)
+  end
+
+  def self.ensure_plan_exists(plan_name)
+    unless plan_store.list.include?(plan_name)
+      raise StandardError, "The plan #{plan_name} does not exist in the plan store"
+    end
   end
 
   #TODO: repalace the state store location with the value from the unified configuration
@@ -102,10 +112,6 @@ module Dopv
     raise StandardError, 'Please update the plan state, there are pending updates' if pending_updates?(plan_name)
     plan_parser = plan_store.get_plan(plan_name)
     Dopv::Plan.new(plan_parser)
-  end
-
-  def self.load_data_volumes_db(db_file)
-    ::Dopv::PersistentDisk::load(db_file)
   end
 
   def self.pending_updates?(plan_name)

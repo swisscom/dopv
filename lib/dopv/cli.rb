@@ -9,6 +9,8 @@ require 'dopv/cli/command_add'
 require 'dopv/cli/command_remove'
 require 'dopv/cli/command_list'
 require 'dopv/cli/command_update'
+require 'dopv/cli/command_import'
+require 'dopv/cli/command_export'
 require 'dopv/cli/command_run'
 
 PROGNAME = 'dopv'
@@ -61,6 +63,8 @@ module Dopv
     command_remove(self)
     command_list(self)
     command_update(self)
+    command_import(self)
+    command_export(self)
     command_run(self, :deploy)
     command_run(self, :undeploy)
 
