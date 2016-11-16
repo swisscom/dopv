@@ -1,4 +1,7 @@
-# 0.5.0 (unreleased)
+# 0.5.0 16.11.2016
+ * Plan store implemented
+ * CLI redesign
+ * Minor fixes
 
 # 0.4.1 15.11.2016
  * Revert `#895e4cdbf65`
@@ -8,7 +11,6 @@
 ## [disk db]
  * Update the disk DB to use `dop_common` plan store while keeping the
    possibility to dump the file.
->>>>>>> Version bump to 0.5.0
 
 # 0.4.0 14.11.2016
 
@@ -228,7 +230,7 @@ Following has been refactored:
    * remove superfluos conditional statements in assignments of node properties
    * do not evaluate networks definition for bare metal
 
-## [base] 
+## [base]
  * Add `set_gateway?` method
  * Fix detachment of disks in destroy method
 
