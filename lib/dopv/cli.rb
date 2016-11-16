@@ -5,6 +5,12 @@
 require 'gli'
 require 'dopv'
 require 'dopv/cli/command_validate'
+require 'dopv/cli/command_add'
+require 'dopv/cli/command_remove'
+require 'dopv/cli/command_list'
+require 'dopv/cli/command_update'
+require 'dopv/cli/command_deploy'
+require 'dopv/cli/command_undeploy'
 
 PROGNAME = 'dopv'
 
@@ -23,7 +29,7 @@ module Dopv
 
     desc 'Log file'
     arg_name 'path_to_log_file'
-    default_value 'STDOUT'
+    default_value nil
     flag [:logfile, :l]
 
     desc 'Verbosity of the command line tool'
@@ -35,7 +41,8 @@ module Dopv
     switch [:trace, :t]
 
     pre do |global_options,command,options,args|
-      ::Dopv.log(global_options[:logfile] == 'STDOUT' ? STDOUT : global_options[:logfile])
+      ENV['GLI_DEBUG'] = 'true' if global_options[:trace] == true
+      ::Dopv.init_file_logger(global_options[:logfile] || STDOUT)
       ::Dopv.log.progname = PROGNAME
       ::Dopv.log.level = ::Logger.const_get(global_options[:verbosity].upcase)
       trace = global_options[:trace]
@@ -44,50 +51,19 @@ module Dopv
     end
 
     on_error do |exception|
-      ::Dopv::log.fatal {"#{exception.message}"}
+      ::Dopv.log.fatal {"#{exception.message}"}
       STDERR.puts "\n#{exception.backtrace.join("\n")}" if trace
 
       true
     end
 
     command_validate(self)
-
-    desc 'Deploy a plan'
-    command :deploy do |c|
-      c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
-      c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
-      c.action do |global_options,options,args|
-        plan_name = Dopv.add(options[:plan])
-        Dopv.import_state(plan_name, YAML.load_file(options[:diskdb]))
-        begin
-          Dopv.deploy(plan_name)
-        ensure
-          File.open(options[:diskdb], File::RDWR) do |diskdb|
-            diskdb << YAML.dump(Dopv.export_state(plan_name))
-          end
-          Dopv.remove(plan_name, true)
-        end
-      end
-    end
-
-    desc 'Undeploy a plan'
-    command :undeploy do |c|
-      c.flag [:plan, :p], :arg_name => 'path_to_plan_file', :required => true
-      c.flag [:diskdb, :d], :arg_name => 'path_to_db_file'
-      c.switch [:rmdisk, :r]
-      c.action do |global_options,options,args|
-        plan_name = Dopv.add(options[:plan])
-        Dopv.import_state(plan_name, YAML.load_file(options[:diskdb]))
-        begin
-          Dopv.undeploy(plan_name, options[:rmdisk])
-        ensure
-          File.open(options[:diskdb], File::RDWR) do |diskdb|
-            diskdb << YAML.dump(Dopv.export_state(plan_name))
-          end
-          Dopv.remove(plan_name, true)
-        end
-      end
-    end
+    command_add(self)
+    command_remove(self)
+    command_list(self)
+    command_update(self)
+    command_deploy(self)
+    command_undeploy(self)
 
   end
 end
