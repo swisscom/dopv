@@ -6,7 +6,6 @@
 
 require 'gli'
 require 'dopv'
-require 'pry-byebug'
 
 PROGNAME = 'dopv'
 
