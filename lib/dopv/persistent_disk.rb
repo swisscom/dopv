@@ -63,7 +63,7 @@ module Dopv
       end
 
       def volumes
-        @state_store.transaction(true) { entries }
+        @state_store.transaction(true) { entries }.dup
       end
 
       def append(entry)
