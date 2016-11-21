@@ -1,7 +1,14 @@
-# 0.5.0 16.11.2016
+# 0.5.0 21.11.2016
+
+## [plan]
  * Plan store implemented
+
+## [cli]
  * CLI redesign
+
+## [general]
  * Minor fixes
+
 
 # 0.4.1 15.11.2016
  * Revert `#895e4cdbf65`
