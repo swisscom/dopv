@@ -8,6 +8,7 @@ require 'dop_common'
 require 'etc'
 
 module Dopv
+  extend DopCommon::NodeFilter
 
   def self.valid?(plan_file)
     plan = DopCommon::Plan.new(YAML.load_file(plan_file))
@@ -40,22 +41,24 @@ module Dopv
     plan_store.list
   end
 
-  def self.deploy(plan_name)
+  def self.deploy(plan_name, options = {})
     plan = get_plan(plan_name)
+    nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
     state_store = Dopv::StateStore.new(plan_name, plan_store)
     plan_store.run_lock(plan_name) do
-      plan.nodes.each do |node|
+      nodes.each do |node|
         Dopv::Infrastructure::bootstrap_node(node, state_store)
       end
     end
   end
 
-  def self.undeploy(plan_name, destroy_data_volumes = false)
+  def self.undeploy(plan_name, options = {})
     plan = get_plan(plan_name)
+    nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
     plan_store.run_lock(plan_name) do
       state_store = Dopv::StateStore.new(plan_name, plan_store)
-      plan.nodes.each do |node|
-        Dopv::Infrastructure::destroy_node(node, state_store, destroy_data_volumes)
+      nodes.each do |node|
+        Dopv::Infrastructure::destroy_node(node, state_store, options[:rmdisk])
       end
     end
   end
