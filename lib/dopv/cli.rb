@@ -3,6 +3,7 @@
 #
 
 require 'gli'
+require 'dop_common/cli/node_selection'
 require 'dopv'
 require 'dopv/cli/command_validate'
 require 'dopv/cli/command_add'
