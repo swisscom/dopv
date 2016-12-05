@@ -1,6 +1,8 @@
 require 'forwardable'
 require 'uri'
 require 'fog'
+require 'open3'
+require 'dop_common/utils'
 
 module Dopv
   module Infrastructure
@@ -12,6 +14,7 @@ module Dopv
 
     class Base
       extend Forwardable
+      include DopCommon::Utils
 
       attr_reader :data_disks_db
       def_delegators :@plan, :nodename, :fqdn, :hostname, :domainname, :dns
@@ -21,6 +24,7 @@ module Dopv
       def_delegator :@plan, :interfaces, :interfaces_config
       def_delegator :@plan, :data_disks, :volumes_config
       def_delegators :@plan, :credentials
+      def_delegators :@plan, :hooks
 
       def self.bootstrap_node(plan, state_store)
         new(plan, state_store).bootstrap_node
@@ -39,13 +43,18 @@ module Dopv
       def bootstrap_node
         begin
           unless node_exist?
+            execute_hook(:pre_create_vm, true)
             node_instance = create_node_instance
             add_node_nics(node_instance)
             add_node_data_volumes(node_instance)
             add_node_affinities(node_instance)
             start_node_instance(node_instance)
+            execute_hook(:post_create_vm, true)
           else
             ::Dopv::log.warn("Node #{nodename}: Already exists.")
+            # TODO: Ask Marcel what would be a purpose/use case of this
+            execute_hook(:pre_create_vm, false)
+            execute_hook(:post_create_vm, false)
           end
         rescue Exception => e
           ::Dopv::log.error("Node #{nodename}: #{e}")
@@ -56,8 +65,14 @@ module Dopv
 
       def destroy_node(destroy_data_volumes=false)
         if node_exist?
+          execute_hook(:pre_destroy_vm, true)
           node_instance = compute_provider.servers.find { |n| n.name == nodename }
           destroy_node_instance(node_instance, destroy_data_volumes)
+          execute_hook(:post_destroy_vm, true)
+        else
+          # TODO: Ask Marcel what would be a purpose/use case of this
+          execute_hook(:pre_destroy_vm, false)
+          execute_hook(:post_destroy_vm, false)
         end
       end
 
@@ -333,12 +348,12 @@ module Dopv
       end
 
       def record_node_data_volume(volume)
-        ::Dopv::log.debug("Node #{nodename} Recording data volume #{volume[:name]} into data volumes DB.")
+        ::Dopv::log.debug("Node #{nodename}: Recording data volume #{volume[:name]} into data volumes DB.")
         data_disks_db << volume.merge(:node => nodename)
       end
 
       def erase_node_data_volume(volume)
-        ::Dopv::log.debug("Node #{nodename} Erasing data volume #{volume.name} from data volumes DB.")
+        ::Dopv::log.debug("Node #{nodename}: Erasing data volume #{volume.name} from data volumes DB.")
         data_disks_db.delete(volume)
       end
 
@@ -347,6 +362,18 @@ module Dopv
 
       def add_node_affinities(node_instance)
         infrastructure_properties.affinity_groups.each { |a| add_node_affinity(node_instance, a) }
+      end
+
+      def execute_hook(hook_name, state_changed = false)
+        has_changes = state_changed ? 1 : 0
+        hooks.send(hook_name).each do |prog|
+          prog_name = File.basename(prog)
+          ::Dopv::log.info("Node #{nodename}: Executing #{hook_name}[#{prog_name}].")
+          o, e, s = Open3.capture3(sanitize_env, "#{prog} #{nodename} #{has_changes}", :unsetenv_others => true)
+          ::Dopv::log.debug("Node #{nodename}: #{hook_name}[#{prog_name}] standard output:\n#{o.chomp}")
+          ::Dopv::log.warn("Node #{nodename}: #{hook_name}[#{prog_name}] non-zero exit status #{s.exitstatus}") unless s.success?
+          ::Dopv::log.debug("Node #{nodename}: #{hook_name}[#{prog_name}] standard error:\n#{e.chomp}") unless e.chomp.empty?
+        end
       end
     end
   end
