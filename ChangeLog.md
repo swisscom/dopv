@@ -1,10 +1,15 @@
+# 0.7.0 06.12.2016
+
+## [general]
+ * Basic node filtering implemented
+
 # 0.6.0 05.12.2016
 
 ## [deps]
  * Update `dop_common`
 
 ## [base]
-* Implement hooks
+ * Implement hooks
 
 # 0.5.1 29.11.2016
 
