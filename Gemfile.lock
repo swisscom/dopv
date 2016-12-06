@@ -9,10 +9,10 @@ GIT
 
 GIT
   remote: https://gitlab.swisscloud.io/clu-dop/dop_common.git
-  revision: e1b534a420fc4d303c441c70364189328dd17eb9
-  tag: v0.10.2
+  revision: 1e7797645819d1cc2ce427fede3d2947e4940f94
+  tag: v0.10.3
   specs:
-    dop_common (0.10.2)
+    dop_common (0.10.3)
       hashdiff (~> 0.3, >= 0.3.1)
       lockfile (~> 2)
       rb-inotify (~> 0.9)
@@ -22,7 +22,7 @@ PATH
   specs:
     dopv (0.7.0)
       colorize (~> 0.7.5)
-      dop_common (~> 0.10, >= 0.10.2)
+      dop_common (~> 0.10, >= 0.10.3)
       fog (~> 1.36.0)
       fog-google (< 0.1.1)
       fog-profitbricks (~> 0.0.5)
