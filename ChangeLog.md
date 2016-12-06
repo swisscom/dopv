@@ -1,5 +1,8 @@
 # 0.7.0 06.12.2016
 
+## [doc]
+ * Update documentation
+
 ## [general]
  * Basic node filtering implemented
 
