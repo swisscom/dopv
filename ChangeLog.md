@@ -1,3 +1,6 @@
+# 0.7.2 07.12.2016
+ * Update `dop_common` and update required parts of `dopv` code
+
 # 0.7.1 06.12.2016
  * Update `dop_common`
 
