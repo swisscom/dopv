@@ -21,7 +21,11 @@ module Dopv
             c.switch [:rmdisk, :r]
           end
 
+          DopCommon::Cli.node_select_options(c)
+
           c.action do |global_options,options,args|
+            options[:run_for_nodes] = DopCommon::Cli.parse_node_select_options(options)
+
             remove = false
             plan_name = nil
             if Dopv.list.include?(options[:plan])
@@ -52,8 +56,8 @@ module Dopv
 
             begin
               case action
-              when :deploy   then Dopv.deploy(plan_name)
-              when :undeploy then Dopv.undeploy(plan_name, options[:rmdisk])
+              when :deploy   then Dopv.deploy(plan_name, options)
+              when :undeploy then Dopv.undeploy(plan_name, options)
               end
             ensure
               Dopv.export_state_file(plan_name, options[:diskdb]) if export
