@@ -3,7 +3,7 @@ source 'https://rubygems.org'
 # dop common
 gem 'dop_common',
   :git => 'https://gitlab.swisscloud.io/clu-dop/dop_common.git',
-  :tag => 'v0.11.0'
+  :tag => 'max_in_flight_infra'
   #:path   => '../dop_common'
 
 
