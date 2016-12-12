@@ -29,6 +29,7 @@ PATH
       gli (~> 2.13.1)
       json (~> 1.8)
       net-ssh (< 3.0)
+      parallel (~> 1)
       rbovirt (~> 0.1, >= 0.1.2)
       rbvmomi (~> 1.8.2)
 
@@ -195,6 +196,7 @@ GEM
     notiffany (0.1.1)
       nenv (~> 0.1)
       shellany (~> 0.0)
+    parallel (1.10.0)
     pry (0.10.4)
       coderay (~> 1.1.0)
       method_source (~> 0.8.1)
