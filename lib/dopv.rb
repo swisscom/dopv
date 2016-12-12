@@ -139,7 +139,6 @@ module Dopv
       Dopv.log.debug("Threads for infra #{infra.name}: #{max_in_flight}")
       Parallel.each(infras[infra], :in_threads => max_in_flight) do |node|
         Dopv.log.debug("Spawning thread for node #{node.name}")
-        sleep(5)
         begin yield(node)
         rescue => e
           errors = true
