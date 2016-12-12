@@ -19,8 +19,8 @@ module Dopv
         update_state(options)
       end
     rescue DopCommon::UnknownVersionError => e
-      Dopv.log.warn("The state has an unknown plan version #{e.message}.")
-      Dopv.log.warn("Please update with the 'clear' or 'ignore' option")
+      Dopv.log.warn("The state had an unknown plan version #{e.message}, ignoring update")
+      ignore(options)
     rescue => e
       Dopv.log.error("An error occured during update: #{e.message}")
       Dopv.log.error("Please update with the 'clear' or 'ignore' option")
