@@ -6,9 +6,12 @@ require 'dopv/infrastructure'
 require 'dopv/state_store'
 require 'dop_common'
 require 'etc'
+require 'parallel'
 
 module Dopv
   extend DopCommon::NodeFilter
+
+  DEFAULT_MAX_IN_FLIGHT = 5
 
   def self.valid?(plan_file)
     plan = DopCommon::Plan.new(YAML.load_file(plan_file))
@@ -50,7 +53,7 @@ module Dopv
     nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
     state_store = Dopv::StateStore.new(plan_name, plan_store)
     plan_store.run_lock(plan_name) do
-      nodes.each do |node|
+      in_parallel(plan, nodes) do |node|
         Dopv::Infrastructure::bootstrap_node(node, state_store)
       end
     end
@@ -62,7 +65,7 @@ module Dopv
     nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
     plan_store.run_lock(plan_name) do
       state_store = Dopv::StateStore.new(plan_name, plan_store)
-      nodes.each do |node|
+      in_parallel(plan, nodes) do |node|
         Dopv::Infrastructure::destroy_node(node, state_store, options[:rmdisk])
       end
     end
@@ -126,4 +129,27 @@ module Dopv
     state_store = Dopv::StateStore.new(plan_name, plan_store)
     state_store.pending_updates?
   end
+
+  def self.in_parallel(plan, nodes)
+    errors = false
+    infras = nodes.group_by {|node| node.infrastructure}
+    Parallel.each(infras.keys, :in_threads => infras.keys.length) do |infra|
+      Dopv.log.debug("Spawning control thread for infra #{infra.name}")
+      max_in_flight = infra.max_in_flight || plan.max_in_flight || DEFAULT_MAX_IN_FLIGHT
+      Dopv.log.debug("Threads for infra #{infra.name}: #{max_in_flight}")
+      Parallel.each(infras[infra], :in_threads => max_in_flight) do |node|
+        Dopv.log.debug("Spawning thread for node #{node.name}")
+        sleep(5)
+        begin yield(node)
+        rescue => e
+          errors = true
+          Dopv.log.error("There was an error while processing node #{node.name} :")
+          Dopv.log.error(e.message)
+          raise Parallel::Break
+        end
+      end
+    end
+    raise "Errors detected during plan run" if errors
+  end
+
 end
