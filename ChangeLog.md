@@ -1,3 +1,8 @@
+# 0.7.3 unreleased
+
+## [spec]
+ * Implement basic rspec framework
+
 # 0.7.2 07.12.2016
  * Update `dop_common` and update required parts of `dopv` code
 
