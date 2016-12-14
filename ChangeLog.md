@@ -1,3 +1,16 @@
+# 0.7.3 unreleased
+
+## [plan]
+ * Make sure the plan update is automatically ignored for now and update on add
+   as well
+
+## [general]
+ * Implement console rake target
+
+## [spec]
+ * Implement basic rspec framework
+ * Implement basic tests of `Dopv` and `Dopv::VERSION` 
+
 # 0.7.2 07.12.2016
  * Update `dop_common` and update required parts of `dopv` code
 
