@@ -19,7 +19,8 @@ module Dopv
         update_state(options)
       end
     rescue DopCommon::UnknownVersionError => e
-      Dopv.log.warn("The state had an unknown plan version #{e.message}, ignoring update")
+      Dopv.log.warn("The state had an unknown plan version #{e.message}")
+      Dopv.log.warn("Bumping state to most recent version")
       ignore(options)
     rescue => e
       Dopv.log.error("An error occured during update: #{e.message}")
@@ -64,7 +65,7 @@ module Dopv
     def update_state(options)
       @state_store.update do |plan_diff|
         Dopv.log.debug("Updating disk state for plan #{@plan_name}. This is the diff:")
-        Dopi.log.debug(plan_diff.to_s)
+        Dopv.log.debug(plan_diff.to_s)
         #TODO: Add update logic for plan updates here
       end
     end
