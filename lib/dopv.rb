@@ -44,6 +44,7 @@ module Dopv
   end
 
   def self.deploy(plan_name, options = {})
+    update_state(plan_name)
     plan = get_plan(plan_name)
     nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
     state_store = Dopv::StateStore.new(plan_name, plan_store)
@@ -55,6 +56,7 @@ module Dopv
   end
 
   def self.undeploy(plan_name, options = {})
+    update_state(plan_name)
     plan = get_plan(plan_name)
     nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
     plan_store.run_lock(plan_name) do
