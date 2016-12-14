@@ -26,6 +26,7 @@ module Dopv
     raise StandardError, 'Plan not valid; did not add' unless valid?(plan_file)
     plan_name = plan_store.update(plan_file)
     update_state(plan_name, options)
+    plan_name
   end
 
   def self.update_state(plan_name, options = {})
