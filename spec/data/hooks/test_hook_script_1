@@ -1,0 +1,9 @@
+#!/bin/bash
+
+echo "This is a testing hook #1"
+echo "Nodename: ${1}"
+echo "Change flag: ${2}"
+
+env
+
+exit 0

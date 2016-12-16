@@ -1,0 +1,10 @@
+#!/bin/bash
+
+echo "This is a testing hook #2"
+echo "Nodename: ${1}"
+echo "Change flag: ${2}"
+
+env
+
+echo "Trying to list a non-existent directory"
+ls -la /non-existent
