@@ -1,5 +1,11 @@
 # 0.7.3 unreleased
 
+## [cli]
+ * Implement deprecation warning for `deploy`/`undeploy` action if called with
+   `-p`/`--plan` options rhather than with additional `plan_name` argument.
+ * Implement new invocation mechanism for `deploy`/`undeploy` actions in order
+   to unify the invocation accross DOP tools.
+
 ## [plan]
  * Make sure the plan update is automatically ignored for now and update on add
    as well
