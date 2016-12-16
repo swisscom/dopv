@@ -14,4 +14,21 @@ describe Dopv::Plan do
     end
   end
 
+  describe '#name' do
+    it 'is called test-1' do
+      expect(@plan.name).to eq 'test-1'
+    end
+  end
+
+  describe '#nodes' do
+    it 'creates two nodes' do
+      expect(@plan.nodes.length).to eq 2
+    end
+  end
+
+  describe '#valid?' do
+    it 'is a valid plan' do
+      expect(@plan.valid?).to eq true
+    end
+  end
 end
