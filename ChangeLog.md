@@ -1,5 +1,8 @@
 # 0.7.3 unreleased
 
+## [log]
+ * Do not write color escape sequences into log files.
+
 ## [cli]
  * Implement deprecation warning for `deploy`/`undeploy` action if called with
    `-p`/`--plan` options rhather than with additional `plan_name` argument.
