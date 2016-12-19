@@ -3,6 +3,7 @@ require 'uri'
 require 'fog'
 require 'open3'
 require 'dop_common/utils'
+require 'pry-byebug'
 
 module Dopv
   module Infrastructure
@@ -15,6 +16,8 @@ module Dopv
     class Base
       extend Forwardable
       include DopCommon::Utils
+
+      MAX_RETRIES = 5
 
       attr_reader :data_disks_db
       def_delegators :@plan, :nodename, :fqdn, :hostname, :domainname, :dns
@@ -42,7 +45,7 @@ module Dopv
 
       def bootstrap_node
         begin
-          unless node_exist?
+          unless get_node_instance
             execute_hook(:pre_create_vm, true)
             node_instance = create_node_instance
             add_node_nics(node_instance)
@@ -64,9 +67,9 @@ module Dopv
       end
 
       def destroy_node(destroy_data_volumes=false)
-        if node_exist?
+        node_instance = get_node_instance
+        if node_instance
           execute_hook(:pre_destroy_vm, true)
-          node_instance = compute_provider.servers.find { |n| n.name == nodename }
           destroy_node_instance(node_instance, destroy_data_volumes)
           execute_hook(:post_destroy_vm, true)
         else
@@ -170,16 +173,19 @@ module Dopv
         @template
       end
 
-      def node_exist?
-        begin
-          if compute_provider.servers.find { |n| n.name == nodename }
-            return true
-          end
-        rescue => e
-          raise ProviderError, "An error occured while searching for a node: #{e}"
+      def get_node_instance
+        retries = 0
+        compute_provider.servers.find { |n| n.name == nodename }
+      rescue => e
+        errmsg = "Node #{nodename}: An error occured while searching for a node: #{e}."
+        retries += 1
+        if retries <= MAX_RETRIES
+          Dopv.log.warn("#{errmsg} Retrying (##{retries}).")
+          sleep 1
+          retry
+        else
+          raise ProviderError, "#{errmsg}. Bailing out"
         end
-
-        false
       end
 
       def node_instance_ready?(node_instance)
