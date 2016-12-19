@@ -138,12 +138,13 @@ module Dopv
       max_in_flight = infra.max_in_flight || plan.max_in_flight || DEFAULT_MAX_IN_FLIGHT
       Dopv.log.debug("Threads for infra #{infra.name}: #{max_in_flight}")
       Parallel.each(infras[infra], :in_threads => max_in_flight) do |node|
-        Dopv.log.debug("Spawning thread for node #{node.name}")
-        begin yield(node)
+        Dopv.log.debug("Spawning thread for node #{node.name}.")
+        begin
+          Dopv.log.debug("Yielding node #{node.name}.")
+          yield(node)
         rescue => e
           errors = true
-          Dopv.log.error("There was an error while processing node #{node.name} :")
-          Dopv.log.error(e.message)
+          Dopv.log.error("There was an error while processing node #{node.name}: #{e}")
           raise Parallel::Break
         end
       end
