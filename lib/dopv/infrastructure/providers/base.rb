@@ -172,9 +172,9 @@ module Dopv
         @template
       end
 
-      def get_node_instance
+      def get_node_instance(filters = {})
         retries = 0
-        compute_provider.servers.find { |n| n.name == nodename }
+        compute_provider.servers.all(filters).find { |n| n.name == nodename }
       rescue => e
         errmsg = "Node #{nodename}: An error occured while searching for a node: #{e}."
         retries += 1

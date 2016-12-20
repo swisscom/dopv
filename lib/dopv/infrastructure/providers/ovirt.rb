@@ -41,6 +41,10 @@ module Dopv
         @compute_provider
       end
 
+      def get_node_instance
+        super({:without_details => true})
+      end
+
       def wait_for_task_completion(node_instance)
         node_instance.wait_for { !locked? }
       end
