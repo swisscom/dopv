@@ -33,9 +33,9 @@ module Dopv
               end
             end
 
-            unless File.exists?(data_disks_file)
-              exit_now!("File #{data_disks_file} does not exist!")
-            end
+            exit_now!("The #{data_disks_file} must exist and be a readable file") unless
+              File.file?(data_disks_file) && File.readable?(data_disks_file)
+
             if !Dopv.export_state(plan_name).empty? && !options[:force]
               exit_now!("The intenal state is not empty, please use the '--force' flag to overwrite")
             end
