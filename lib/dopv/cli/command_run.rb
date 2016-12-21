@@ -5,7 +5,7 @@ module Dopv
       base.class_eval do
 
         desc "#{action.to_s.capitalize} a plan"
-        arg_name 'plan_file_or_id'
+        arg_name 'plan_name'
         command action do |c|
           c.desc "plan name from the store or plan file to #{action.to_s}. If a plan " +
                  'file is given DOPv will run in oneshot mode and add/remove ' +
