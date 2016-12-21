@@ -1,13 +1,11 @@
-# 0.7.3 unreleased
+# 0.7.3 21.12.2016
 
 ## [log]
  * Do not write color escape sequences into log files.
 
 ## [cli]
- * Implement deprecation warning for `deploy`/`undeploy` action if called with
-   `-p`/`--plan` options rhather than with additional `plan_name` argument.
- * Implement new invocation mechanism for `deploy`/`undeploy` actions in order
-   to unify the invocation accross DOP tools.
+ * Deprecate required options in favor of arguments in order to make dopv cli
+   consistent with dopi's one
 
 ## [plan]
  * Make sure the plan update is automatically ignored for now and update on add
