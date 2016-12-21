@@ -5,7 +5,7 @@ module Dopv
       base.class_eval do
 
         desc 'Remove an existing plan from the plan cache'
-        arg_name 'name'
+        arg_name 'plan_name'
         command :remove do |c|
           c.desc 'Keep the DOPi state file'
           c.default_value false
