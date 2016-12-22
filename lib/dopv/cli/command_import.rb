@@ -4,41 +4,25 @@ module Dopv
     def self.command_import(base)
       base.class_eval do
 
-        desc 'Import diskdb file into the internal state store for a given plan'
+        desc 'Import data disks from a file into internal state store of the given plan'
         arg_name 'plan_name data_disks_file'
         command :import do |c|
-          c.desc 'The plan name to import to'
-          c.flag [:plan, :p], :arg_name => 'plan_name'
-
-          c.desc 'The local diskdb file to import'
-          c.flag [:diskdb, :d], :arg_name => 'data_disks_file'
-
-          c.desc 'Force overwrite if the state is not empty'
-          c.switch [:force, :f], :default_value => false
+          c.desc 'Force plan import'
+          c.switch [:f, :force], :negatable => false
 
           c.action do |global_options, options, args|
-            if args.empty?
-              if options[:plan].nil? || options[:diskdb].nil?
-                exit_now!('Both, -p/--plan and -d/--diskdb options are required.')
-              else
-                Dopv.log.warn('This invocation method is deprecated and will be removed in DOPv >= 0.8.0.')
-                Dopv.log.warn('Please use dopv [-f|--force] import <plan_name> <data_disk_file>.')
-                plan_name, data_disks_file = options[:plan], options[:diskdb]
-              end
-            else
-              if args.length != 2
-                exit_now!('Import takes exactly two arguments, plan name and data disks file')
-              else
-                plan_name, data_disks_file = args
-              end
-            end
+            help_now!('Import takes exactly two arguments, a plan name and data disks file.') if
+              args.empty? || args.length != 2
 
-            exit_now!("The #{data_disks_file} must exist and be a readable file") unless
+            plan_name, data_disks_file = args
+
+            exit_now!("The #{data_disks_file} must be a readable file.") unless
               File.file?(data_disks_file) && File.readable?(data_disks_file)
 
             if !Dopv.export_state(plan_name).empty? && !options[:force]
-              exit_now!("The intenal state is not empty, please use the '--force' flag to overwrite")
+              exit_now!("The internal plan's state is not empty, please use the '-f|--force' flag to overwrite.")
             end
+
             Dopv.import_state_file(plan_name, data_disks_file)
           end
         end
@@ -46,4 +30,3 @@ module Dopv
     end
   end
 end
-

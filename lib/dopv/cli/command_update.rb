@@ -6,32 +6,30 @@ module Dopv
 
         desc 'Update the plan and/or the plan state for a given plan yaml or plan name.'
         arg_name 'plan_file_or_name'
-        command :update do |c|
-          c.desc 'Remove the existing disk information and start with a clean state'
-          c.default_value false
-          c.switch [:clear, :c]
 
-          c.desc 'Ignore the update and set the state version to the latest version'
-          c.default_value false
-          c.switch [:ignore, :i]
+        command :update do |c|
+          c.desc 'Remove the existing disk information and start with a clean state.'
+          c.switch [:clear, :c], :default_value => false
+
+          c.desc 'Ignore the update and set the state version to the latest version.'
+          c.switch [:ignore, :i], :default_value => false
 
           c.action do |global_options, options, args|
-            help_now!('Specify a plan name or to update') if args.empty?
-            help_now!('You can only update one plan') if args.length > 1
+            help_now!('Update takes exactly one argument, the plan name or file.') if
+              args.empty? || args.length != 1
+
             plan = args[0]
+
             if Dopv.list.include?(plan)
               Dopv.update_state(plan, options)
-            elsif File.exists?(plan)
+            elsif File.file?(plan) && File.readable?(plan)
               Dopv.update_plan(plan, options)
             else
-              help_now!("the provided plan '#{plan}' is not an existing file or plan name")
+              exit_now!("No such plan '#{plan}' in the store or the plan file doesn't exist or is unreadable.")
             end
           end
         end
-
       end
     end
-
   end
 end
-
