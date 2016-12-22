@@ -1,3 +1,14 @@
+# 0.8.0 unreleased
+
+## [cli]
+ * Removed deprecated options
+
+## [general]
+ * Parallelization impelentation
+
+## [deps]
+ * Update of `dop_common`
+
 # 0.7.3 21.12.2016
 
 ## [log]
