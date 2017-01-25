@@ -14,7 +14,8 @@ module Dopv
   DEFAULT_MAX_IN_FLIGHT = 5
 
   def self.valid?(plan_file)
-    plan = DopCommon::Plan.new(YAML.load_file(plan_file))
+    hash, _ = plan_store.read_plan_file(plan_file)
+    plan = DopCommon::Plan.new(hash)
     plan.valid?
   end
 
