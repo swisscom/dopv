@@ -14,7 +14,8 @@ module Dopv
   DEFAULT_MAX_IN_FLIGHT = 5
 
   def self.valid?(plan_file)
-    plan = DopCommon::Plan.new(YAML.load_file(plan_file))
+    hash, _ = plan_store.read_plan_file(plan_file)
+    plan = DopCommon::Plan.new(hash)
     plan.valid?
   end
 
@@ -100,23 +101,13 @@ module Dopv
   private
 
   def self.plan_store
-    @plan_store ||= DopCommon::PlanStore.new(plan_store_dir)
+    @plan_store ||= DopCommon::PlanStore.new(DopCommon.config.plan_store_dir)
   end
 
   def self.ensure_plan_exists(plan_name)
     unless plan_store.list.include?(plan_name)
       raise StandardError, "The plan #{plan_name} does not exist in the plan store"
     end
-  end
-
-  #TODO: repalace the state store location with the value from the unified configuration
-  def self.plan_store_dir
-      user = Etc.getpwuid(Process.uid)
-      is_root = user.name == 'root'
-      dop_home = File.join(user.dir, '.dop')
-      @plan_store_dir = is_root ?
-        '/var/lib/dop/cache' :
-        File.join(dop_home, 'cache')
   end
 
   def self.get_plan(plan_name)
