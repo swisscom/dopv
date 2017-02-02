@@ -3,14 +3,12 @@
 ## [plan]
  * Use the preprocessor in the validation method
 
-## [ceneral]
- * Implement common configuration
-
 ## [cli]
  * Removed deprecated options
 
 ## [general]
  * Parallelization impelentation
+ * Implement common configuration
 
 ## [deps]
  * Update of `dop_common`
