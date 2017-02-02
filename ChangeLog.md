@@ -1,4 +1,10 @@
-# 0.8.0 unreleased
+# 0.8.0 02.02.2017
+
+## [plan]
+ * Use the preprocessor in the validation method
+
+## [ceneral]
+ * Implement common configuration
 
 ## [cli]
  * Removed deprecated options
