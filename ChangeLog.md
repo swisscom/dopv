@@ -1,3 +1,9 @@
+# 0.8.1 unreleased
+
+## [vsphere]
+ * Remove obsolete `searchdomains` method
+ * Move vsphere-related delegators into `VSPhere` class
+
 # 0.8.0 02.02.2017
 
 ## [plan]
