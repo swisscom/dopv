@@ -4,11 +4,12 @@ require 'fog'
 
 module Dopv
   module Infrastructure
-    extend Forwardable
-
-    def_delegators :@plan, :product_id, :organization_name
 
     class Vsphere < Base
+      extend Forwardable
+
+      def_delegators :@plan, :product_id, :organization_name
+
       def initialize(node_config, data_disks_db)
         super(node_config, data_disks_db)
 
