@@ -38,20 +38,6 @@ module Dopv
         @dest_folder ||= infrastructure_properties.dest_folder
       end
 
-      def searchdomains
-        begin
-          case ns_config[:domain]
-          when String
-            [ns_config[:domain]]
-          when Array
-            ns_config
-          else
-            nil
-          end
-        rescue nil
-        end
-      end
-
       def timezone
         super || '085'
       end
