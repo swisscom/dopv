@@ -39,6 +39,7 @@ module Dopv
       def initialize(plan, state_store)
         @compute_provider = nil
         @plan = plan
+        @state_store = state_store
         @data_disks_db = Dopv::PersistentDisk::DB.new(state_store, nodename)
       end
 
@@ -382,11 +383,14 @@ module Dopv
       end
 
       def record_node_instance(node_instance)
-        nodename
-        node_ips
+        @state_store.transaction do
+          @state_store[:nodes] ||= {}
+          @state_store[:nodes][nodename] ||= {}
+          @state_store[:nodes][nodename][:ip_addresses] = get_node_ip_addresses
+        end
       end
 
-      def node_ips(node_instance)
+      def get_node_ip_addresses(node_instance)
         []
       end
     end
