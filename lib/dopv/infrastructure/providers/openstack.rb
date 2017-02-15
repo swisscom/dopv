@@ -299,6 +299,10 @@ module Dopv
 
         config
       end
+
+      def get_node_ip_addresses(node_instance)
+        node_instance.ip_addresses
+      end
     end
   end
 end
