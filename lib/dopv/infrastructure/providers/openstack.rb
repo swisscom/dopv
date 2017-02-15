@@ -1,5 +1,4 @@
 require 'fog'
-require 'pry-byebug'
 
 module Dopv
   module Infrastructure
