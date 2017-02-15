@@ -3,7 +3,7 @@ source 'https://rubygems.org'
 # dop common
 gem 'dop_common',
   :git => 'https://gitlab.swisscloud.io/puppet-dop/dop_common.git',
-  :tag => 'v0.12.0'
+  :tag => 'v0.12.1'
   #:path   => '../dop_common'
 
 
