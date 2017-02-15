@@ -1,4 +1,14 @@
-# 0.8.1 unreleased
+# 0.9.0 15.02.2017
+## [base]
+ * Implement node state recording
+
+## [openstack]
+ * Implement `get_node_ip_addresses`
+
+## [plan]
+ * Plan updates for l13ch and lab1ch
+
+# 0.8.1 14.02.2017
 
 ## [vsphere]
  * Remove obsolete `searchdomains` method
