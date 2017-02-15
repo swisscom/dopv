@@ -380,6 +380,15 @@ module Dopv
           ::Dopv::log.debug("Node #{nodename}: #{hook_name}[#{prog_name}] standard error:\n#{e.chomp}") unless e.chomp.empty?
         end
       end
+
+      def record_node_instance(node_instance)
+        nodename
+        node_ips
+      end
+
+      def node_ips(node_instance)
+        []
+      end
     end
   end
 end
