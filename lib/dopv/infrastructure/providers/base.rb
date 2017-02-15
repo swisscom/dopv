@@ -53,6 +53,7 @@ module Dopv
             add_node_affinities(node_instance)
             start_node_instance(node_instance)
             execute_hook(:post_create_vm, true)
+            record_node_instance(node_instance)
           else
             ::Dopv::log.warn("Node #{nodename}: Already exists.")
             # TODO: Ask Marcel what would be a purpose/use case of this
@@ -386,7 +387,7 @@ module Dopv
         @state_store.transaction do
           @state_store[:nodes] ||= {}
           @state_store[:nodes][nodename] ||= {}
-          @state_store[:nodes][nodename][:ip_addresses] = get_node_ip_addresses
+          @state_store[:nodes][nodename][:ip_addresses] = get_node_ip_addresses(node_instance)
         end
       end
 

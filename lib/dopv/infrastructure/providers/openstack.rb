@@ -1,4 +1,5 @@
 require 'fog'
+require 'pry-byebug'
 
 module Dopv
   module Infrastructure
@@ -301,7 +302,7 @@ module Dopv
       end
 
       def get_node_ip_addresses(node_instance)
-        node_instance.ip_addresses
+        (node_instance.ip_addresses + [node_instance.floating_ip_address]).flatten.uniq
       end
     end
   end
