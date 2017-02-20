@@ -73,6 +73,7 @@ module Dopv
           execute_hook(:pre_destroy_vm, true)
           destroy_node_instance(node_instance, destroy_data_volumes)
           execute_hook(:post_destroy_vm, true)
+          erase_node_instance(node_instance)
         else
           # TODO: Ask Marcel what would be a purpose/use case of this
           execute_hook(:pre_destroy_vm, false)
@@ -391,9 +392,16 @@ module Dopv
         end
       end
 
+      def erase_node_instance(node_instance)
+        @state_store.transaction do
+          @state_store[:nodes].delete(nodename)
+        end
+      end
+
       def get_node_ip_addresses(node_instance)
         []
       end
     end
   end
 end
+
