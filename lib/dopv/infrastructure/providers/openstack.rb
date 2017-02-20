@@ -301,7 +301,7 @@ module Dopv
       end
 
       def get_node_ip_addresses(node_instance)
-        (node_instance.ip_addresses + [node_instance.floating_ip_address]).flatten.uniq
+        (node_instance.ip_addresses + [node_instance.floating_ip_address]).flatten.uniq.compact
       end
     end
   end
