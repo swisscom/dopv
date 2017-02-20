@@ -289,6 +289,20 @@ module Dopv
         end
         @provider_pubkey_hash
       end
+
+      def get_node_ip_addresses(node_instance, timeout=300)
+        begin
+          ::Dopv::log.debug("Node #{nodename}: Waiting on VMware Tools for #{timeout} seconds.")
+          reload_node_instance(node_instance)
+          node_instance.wait_for(timeout){|vm| vm.tools_running?}
+          node_ref = compute_provider.send(:get_vm_ref, node_instance.id)
+          node_guest_net = node_ref.guest.net
+        rescue
+          ::Dopv::log.debug("Node #{nodename}: Timed out waiting for VMware Tools after #{timeout} seconds.")
+          return super(node_instance)
+        end
+        node_guest_net.map(&:ipAddress).flatten.uniq.compact
+      end
     end
   end
 end
