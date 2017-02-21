@@ -290,18 +290,32 @@ module Dopv
         @provider_pubkey_hash
       end
 
-      def get_node_ip_addresses(node_instance, timeout=300)
+      def get_node_ip_addresses(node_instance, params={})
         begin
-          ::Dopv::log.debug("Node #{nodename}: Waiting on VMware Tools for #{timeout} seconds.")
+          raise ProviderError, "VMware Tools not installed" unless node_instance.tools_installed?
+          params = {:maxtime => 300, :delay => 10}.merge(params)
+          ::Dopv::log.debug("Node #{nodename}: Waiting on VMware Tools for #{params[:maxtime]} seconds.")
           reload_node_instance(node_instance)
-          node_instance.wait_for(timeout){|vm| vm.tools_running?}
+          node_instance.wait_for(params[:maxtime]){|vm| vm.ready?}
+          node_instance.wait_for(params[:maxtime]){|vm| vm.tools_running?}
           node_ref = compute_provider.send(:get_vm_ref, node_instance.id)
-          node_guest_net = node_ref.guest.net
-        rescue
-          ::Dopv::log.debug("Node #{nodename}: Timed out waiting for VMware Tools after #{timeout} seconds.")
-          return super(node_instance)
+          node_ref_guest_net = nil
+          start_time = Time.now.to_f
+          while (Time.now.to_f - start_time) < params[:maxtime]
+            unless node_ref.guest_ip
+              sleep params[:delay]
+            else
+              node_ref_guest_net = node_ref.guest.net
+              break
+            end
+          end
+          raise ProviderError, "VMware Tools not ready yet" unless node_ref_guest_net
+          node_ref_guest_net.map(&:ipAddress).flatten.uniq.compact
+
+        rescue Exception => e
+          ::Dopv::log.debug("Node #{nodename}: Unable to get all IP Addresses, Error:  #{e.message}.")
+          [node_instance.public_ip_address].compact
         end
-        node_guest_net.map(&:ipAddress).flatten.uniq.compact
       end
     end
   end
