@@ -1,3 +1,11 @@
+# 0.10.0 unreleased
+
+## [base]
+ * Implement `erase_node_instance`
+
+## [vsphere]
+ * Implement `get_node_ip_addresses`
+
 # 0.9.0 15.02.2017
 ## [base]
  * Implement node state recording
