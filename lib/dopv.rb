@@ -72,6 +72,18 @@ module Dopv
     end
   end
 
+  def self.refresh(plan_name, options = {})
+    update_state(plan_name)
+    plan = get_plan(plan_name)
+    nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
+    plan_store.run_lock(plan_name) do
+      state_store = Dopv::StateStore.new(plan_name, plan_store)
+      in_parallel(plan, nodes) do |node|
+        Dopv::Infrastructure::refresh_node(node, state_store)
+      end
+    end
+  end
+
   def self.export_state(plan_name)
     ensure_plan_exists(plan_name)
     state_store = Dopv::StateStore.new(plan_name, plan_store)

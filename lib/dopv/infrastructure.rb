@@ -30,5 +30,11 @@ module Dopv
       provider = load_provider(plan.infrastructure.provider)
       provider.destroy_node(plan, state_store, destroy_data_volumes)
     end
+
+    def self.refresh_node(plan, state_store)
+      provider = load_provider(plan.infrastructure.provider)
+      provider.refresh_node(plan, state_store)
+    end
+
   end
 end

@@ -36,6 +36,10 @@ module Dopv
         new(plan, state_store).destroy_node(destroy_data_volumes)
       end
 
+      def self.refresh_node(plan, state_store)
+        new(plan, state_store).refresh_node
+      end
+
       def initialize(plan, state_store)
         @compute_provider = nil
         @plan = plan
@@ -78,6 +82,15 @@ module Dopv
           # TODO: Ask Marcel what would be a purpose/use case of this
           execute_hook(:pre_destroy_vm, false)
           execute_hook(:post_destroy_vm, false)
+        end
+      end
+
+      def refresh_node
+        node_instance = get_node_instance
+        if node_instance
+          record_node_instance(node_instance)
+        else
+          erase_node_instance(node_instance)
         end
       end
 

@@ -68,6 +68,7 @@ module Dopv
     command_export(self)
     command_run(self, :deploy)
     command_run(self, :undeploy)
+    command_run(self, :refresh)
 
   end
 end

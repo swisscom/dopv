@@ -27,6 +27,7 @@ module Dopv
               case action
               when :deploy   then Dopv.deploy(plan_name, options)
               when :undeploy then Dopv.undeploy(plan_name, options)
+              when :refresh  then Dopv.refresh(plan_name, options)
               end
             end
           end
