@@ -1,0 +1,140 @@
+name: test-1
+max_in_flight: 5
+
+credentials:
+  api_login_ovirt:
+    type: username_password
+    username: foo@bar
+    password: foobar
+  deployment_login:
+    type: username_password
+    username: root
+    password: baz
+
+infrastructures:
+  test-1:
+    type: ovirt
+    endpoint: https://foo.bar.baz/api
+    credentials: api_login_ovirt
+    networks:
+      net-1:
+        ip_pool:
+          from: 192.168.0.10
+          to: 192.168.0.245
+        ip_netmask: 255.255.255.0
+        ip_defgw: 192.168.0.254
+      net-2:
+        ip_pool:
+          from: 192.168.1.10
+          to: 192.168.1.245
+        ip_netmask: 255.255.255.0
+        ip_defgw: 192.168.1.254
+    affinity_groups:
+      test-1:
+        positive: true
+        enforce: false
+        cluster: test-1
+
+hooks:
+  pre_create_vm:
+  - spec/data/hooks/test_hook_script_1
+  - spec/data/hooks/test_hook_script_2
+  post_create_vm:
+  - spec/data/hooks/test_hook_script_1
+  - spec/data/hooks/test_hook_script_2
+  pre_destroy_vm:
+  - spec/data/hooks/test_hook_script_1
+  - spec/data/hooks/test_hook_script_2
+  post_destroy_vm:
+  - spec/data/hooks/test_hook_script_1
+  - spec/data/hooks/test_hook_script_2
+
+nodes:
+  test-1.foo.bar.baz:
+    infrastructure: test-1
+    infrastructure_properties:
+      datacenter: test-1
+      cluster: test-1
+      keep_ha: false
+      affinity_groups:
+        - test-1
+    full_clone: false
+    image: img-1
+    interfaces:
+      eth0:
+        network: net-1
+        ip: 192.168.0.11
+      eth1:
+        network: net-2
+        ip: dhcp
+        set_gateway: false
+    disks:
+      disk-1:
+        pool: test-1
+        size: 1G
+      disk-2:
+        pool: test-2
+        size: 2G
+        thin: false
+    dns:
+      name_servers:
+        - 192.168.1.254
+      search_domains:
+        - foo.bar.baz
+    cores: 3
+    memory: 6G
+    credentials:
+      - deployment_login
+  test-2.foo.bar.baz:
+    infrastructure: test-1
+    infrastructure_properties:
+      datacenter: test-1
+      cluster: test-1
+      keep_ha: false
+      affinity_groups:
+        - test-1
+    full_clone: false
+    image: img-2
+    interfaces:
+      eth0:
+        network: net-1
+        ip: 192.168.0.12
+    disks:
+      disk-1:
+        pool: test-3
+        size: 1G
+    dns:
+      name_servers:
+        - 192.168.1.254
+      search_domains:
+        - foo.bar.baz
+    flavor: small
+    credentials:
+      - deployment_login
+
+steps:
+  default:
+    - name: '0 - 1: ALL: Configure ssh login credentials'
+      nodes: all
+      max_in_flight: -1
+      set_plugin_defaults:
+        - plugins: "/^ssh/"
+          :credentials: deployment_login
+      command:
+        plugin: dummy
+    - name: '0 - 2: ALL: Make sure we can login to all nodes'
+      nodes: all
+      max_in_flight: -1
+      command:
+        plugin: ssh/wait_for_login
+        plugin_timeout: 600
+    - name: '0 - 3: ALL: Disable puppet to prevent automatic runs'
+      nodes: all
+      max_in_flight: -1
+      command:
+        plugin: ssh/custom
+        exec: |
+          echo "Dopi was here" > /tmp/dopi.txt
+        verify_commands:
+          - plugin: ssh/file_exists
+            file: "/tmp/dopi.txt"
