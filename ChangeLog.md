@@ -1,4 +1,13 @@
-# 0.10.0 unreleased
+# 0.10.1 08.03.2017
+
+## [cli]
+ * Add a resfresh command to update node information in the local state store
+ * Make sure the plan exists for deploy/undeploy/refresh commands
+
+## [general]
+ * Make sure the ip list in the state store is clean
+
+# 0.10.0 22.02.2017
 
 ## [base]
  * Implement `erase_node_instance`
