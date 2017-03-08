@@ -49,6 +49,7 @@ module Dopv
   end
 
   def self.deploy(plan_name, options = {})
+    ensure_plan_exists(plan_name)
     update_state(plan_name)
     plan = get_plan(plan_name)
     nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
@@ -61,6 +62,7 @@ module Dopv
   end
 
   def self.undeploy(plan_name, options = {})
+    ensure_plan_exists(plan_name)
     update_state(plan_name)
     plan = get_plan(plan_name)
     nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
@@ -73,6 +75,7 @@ module Dopv
   end
 
   def self.refresh(plan_name, options = {})
+    ensure_plan_exists(plan_name)
     update_state(plan_name)
     plan = get_plan(plan_name)
     nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
