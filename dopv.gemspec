@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["pavol.dilung@swisscom.com", "azuber@puzzle.ch"]
   spec.description   = %q{Deployment orchestrator for VMs}
   spec.summary       = %q{Deployment orchestrator for VMs}
-  spec.homepage      = "https://gitlab.swisscloud.io/clu-dop/dopv/tree/master"
+  spec.homepage      = "https://github.com/swisscom/dopv"
   spec.license       = "Apache-2.0"
 
   spec.files         = `git ls-files`.split($/)
