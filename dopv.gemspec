@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.description   = %q{Deployment orchestrator for VMs}
   spec.summary       = %q{Deployment orchestrator for VMs}
   spec.homepage      = "https://gitlab.swisscloud.io/clu-dop/dopv/tree/master"
-  spec.license       = "MIT"
+  spec.license       = "Apache-2.0"
 
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
