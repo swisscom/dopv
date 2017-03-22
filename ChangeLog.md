@@ -1,3 +1,12 @@
+# 0.11.0 unreleased
+## [general]
+ * Split log files by nodes
+
+## [cli]
+ * Logfile options are now the same as in dopi
+ * The output format is now smaller by default. The old behaviour where the log entry contained
+   the code line of the message can be activated with the "--trace" flag. 
+
 # 0.10.1 08.03.2017
 
 ## [cli]
