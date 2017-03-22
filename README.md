@@ -202,7 +202,7 @@ $ dopv -l /tmp/dopv.log -v debug deploy -p /tmp/plan.yaml -d /tmp/disks.yaml
 Please note that `dopv` filtering by configuration and roles is not yet supported.
 
 ## Plan
-A plan format and description can be found [here](https://gitlab.swisscloud.io/clu-dop/dop_common/blob/master/doc/plan_format_v0.0.1.md). A plan example can be found [here](https://gitlab.swisscloud.io/clu-dop/dop_common/blob/master/doc/examples/example_deploment_plan_v0.0.1.yaml)
+A plan format and description can be found [here](https://github.com/swisscom/dop_common/blob/master/doc/plan_format_v0.0.1.md). A plan example can be found [here](https://github.com/swisscom/dop_common/blob/master/doc/plan_format_v0.0.1.md)
 
 
 ## Contributing
