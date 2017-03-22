@@ -35,7 +35,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "guard-ctags-bundler"
 
   spec.add_dependency "json", "~> 1.8"
-  spec.add_dependency "colorize", "~> 0.7.5"
+  spec.add_dependency 'logger-colors', '~> 1'
   #spec.add_dependency "rest-client", "~> 1.7"
   spec.add_dependency "rbovirt", "~> 0.1", '>= 0.1.2'
   spec.add_dependency "rbvmomi", "~> 1.8.2"

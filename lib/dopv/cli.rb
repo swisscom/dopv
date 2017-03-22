@@ -4,6 +4,8 @@
 
 require 'gli'
 require 'dop_common/cli/node_selection'
+require 'dop_common/cli/log'
+require 'dop_common/cli/global_options'
 require 'dopv'
 require 'dopv/cli/command_validate'
 require 'dopv/cli/command_add'
@@ -13,8 +15,7 @@ require 'dopv/cli/command_update'
 require 'dopv/cli/command_import'
 require 'dopv/cli/command_export'
 require 'dopv/cli/command_run'
-
-PROGNAME = 'dopv'
+require 'logger/colors'
 
 module Dopv
   module Cli
@@ -29,33 +30,12 @@ module Dopv
     subcommand_option_handling :normal
     arguments :strict
 
-    desc 'Log file'
-    arg_name 'path_to_log_file'
-    default_value nil
-    flag [:logfile, :l]
+    DopCommon::Cli.global_options(self)
 
-    desc 'Verbosity of the command line tool'
-    arg_name 'level'
-    default_value 'info'
-    flag [:verbosity, :v], :must_match => ['debug', 'info', 'warn', 'error', 'fatal']
-
-    desc 'Show stacktrace on crash'
-    switch [:trace, :t]
-
-    pre do |global_options,command,options,args|
-      ENV['GLI_DEBUG'] = 'true' if global_options[:trace] == true
-      ::Dopv.init_file_logger(global_options[:logfile] || STDOUT)
-      ::Dopv.log.progname = PROGNAME
-      ::Dopv.log.level = ::Logger.const_get(global_options[:verbosity].upcase)
-      trace = global_options[:trace]
-
-      true
-    end
-
-    on_error do |exception|
-      ::Dopv.log.fatal {"#{exception.message}"}
-      STDERR.puts "\n#{exception.backtrace.join("\n")}" if trace
-
+    pre do |global,command,options,args|
+      DopCommon.configure = global
+      ENV['GLI_DEBUG'] = 'true' if global[:trace] == true
+      DopCommon::Cli.initialize_logger('dopv.log', global[:log_level], global[:verbosity], global[:trace])
       true
     end
 

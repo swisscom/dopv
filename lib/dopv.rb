@@ -49,42 +49,15 @@ module Dopv
   end
 
   def self.deploy(plan_name, options = {})
-    ensure_plan_exists(plan_name)
-    update_state(plan_name)
-    plan = get_plan(plan_name)
-    nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
-    state_store = Dopv::StateStore.new(plan_name, plan_store)
-    plan_store.run_lock(plan_name) do
-      in_parallel(plan, nodes) do |node|
-        Dopv::Infrastructure::bootstrap_node(node, state_store)
-      end
-    end
+    run(:deploy, plan_name, options)
   end
 
   def self.undeploy(plan_name, options = {})
-    ensure_plan_exists(plan_name)
-    update_state(plan_name)
-    plan = get_plan(plan_name)
-    nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
-    plan_store.run_lock(plan_name) do
-      state_store = Dopv::StateStore.new(plan_name, plan_store)
-      in_parallel(plan, nodes) do |node|
-        Dopv::Infrastructure::destroy_node(node, state_store, options[:rmdisk])
-      end
-    end
+    run(:undeploy, plan_name, options)
   end
 
   def self.refresh(plan_name, options = {})
-    ensure_plan_exists(plan_name)
-    update_state(plan_name)
-    plan = get_plan(plan_name)
-    nodes = filter_nodes(plan.nodes, options[:run_for_nodes])
-    plan_store.run_lock(plan_name) do
-      state_store = Dopv::StateStore.new(plan_name, plan_store)
-      in_parallel(plan, nodes) do |node|
-        Dopv::Infrastructure::refresh_node(node, state_store)
-      end
-    end
+    run(:refresh, plan_name, options)
   end
 
   def self.export_state(plan_name)
@@ -134,6 +107,38 @@ module Dopv
   def self.pending_updates?(plan_name)
     state_store = Dopv::StateStore.new(plan_name, plan_store)
     state_store.pending_updates?
+  end
+
+  def self.run(operation, plan_name, options)
+    ensure_plan_exists(plan_name)
+    update_state(plan_name)
+    plan = get_plan(plan_name)
+    run_options = merge_default_options(options)
+    nodes = filter_nodes(plan.nodes, run_options[:run_for_nodes])
+
+    context_log_path = File.join(DopCommon.config.log_dir, "#{run_options[:run_id]}-#{plan_name}")
+    node_names = nodes.map{|n| n.name}
+    context_logger = DopCommon::ThreadContextLogger.new(context_log_path, node_names)
+
+    plan_store.run_lock(plan_name) do
+      state_store = Dopv::StateStore.new(plan_name, plan_store)
+      in_parallel(plan, nodes) do |node|
+        context_logger.log_context = node.name
+        case operation
+        when :deploy   then Dopv::Infrastructure::bootstrap_node(node, state_store)
+        when :undeploy then Dopv::Infrastructure::destroy_node(node, state_store, run_options[:rmdisk])
+        when :refresh  then Dopv::Infrastructure::refresh_node(node, state_store)
+        end
+      end
+    end
+  end
+
+  def self.merge_default_options(options)
+    {
+      :run_for_nodes => :all,
+      :rmdisk        => false,
+      :run_id        => Time.now.strftime('%Y%m%d-%H%M%S'),
+    }.merge(options)
   end
 
   def self.in_parallel(plan, nodes)
