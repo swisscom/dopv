@@ -37,14 +37,14 @@ Gem::Specification.new do |spec|
   spec.add_dependency "json", "~> 1.8"
   spec.add_dependency 'logger-colors', '~> 1'
   #spec.add_dependency "rest-client", "~> 1.7"
-  spec.add_dependency "rbovirt", "~> 0.1", '>= 0.1.2'
+  spec.add_dependency "rbovirt", "~> 0.1", '>= 0.1.3'
   spec.add_dependency "rbvmomi", "~> 1.8.2"
   spec.add_dependency "net-ssh", "< 3.0" # fog dependcy but net-ssh >= 3.x require ruby 2.x
   spec.add_dependency "fog-google", "< 0.1.1" # fog dependcy but net-ssh >= 3.x require ruby 2.x
   spec.add_dependency "fog-profitbricks", "~> 0.0.5" # fog dependency but fog-profitbricks > 0.5 requires ruby 2.x
   spec.add_dependency "fog", "~> 1.36.0"
   spec.add_dependency "gli", "~> 2.13.1"
-  spec.add_dependency "dop_common", "~> 0.12", '>= 0.12.1'
+  spec.add_dependency "dop_common", "~> 0.13", '>= 0.13.0'
   spec.add_dependency 'parallel', '~> 1'
   if RUBY_VERSION < "2"
     spec.add_dependency "rest-client", "< 2.0"

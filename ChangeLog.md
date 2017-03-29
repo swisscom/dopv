@@ -1,6 +1,7 @@
-# 0.11.0 unreleased
+# 0.11.0 29.03.2017
 ## [general]
  * Split log files by nodes
+ * Prevent crash when a plan was deployed with an older version
 
 ## [cli]
  * Logfile options are now the same as in dopi
