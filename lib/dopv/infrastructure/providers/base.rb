@@ -407,7 +407,9 @@ module Dopv
 
       def erase_node_instance(node_instance)
         @state_store.transaction do
-          @state_store[:nodes].delete(nodename)
+          if @state_store[:nodes]
+            @state_store[:nodes].delete(nodename)
+          end
         end
       end
 
