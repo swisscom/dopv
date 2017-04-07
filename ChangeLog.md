@@ -1,3 +1,16 @@
+# 0.12.0 unreleased
+## [vsphere]
+ * Improve `destroy_node`
+   * Waiting for poweredOff vm state
+ * Improve `get_node_ip_addresses`
+   * Filtering apipa and ipv6
+   * Skipping if vm tools unmanaged or has no connected guest network interface
+ * Improve `customize_node_instance` windows sysprep
+   * Add possibility to join domain or workgroup
+ * Some minor fixes and improvements
+   * `@wait_params` to instance
+   * Handling of properties thin/thick provisioning, timezone and product_id
+
 # 0.11.0 29.03.2017
 ## [general]
  * Split log files by nodes

@@ -8,9 +8,9 @@ module Dopv
     class Vsphere < Base
       extend Forwardable
 
-      def_delegators :@plan, :product_id, :organization_name
+      def_delegators :@plan, :product_id, :organization_name, :domain, :workgroup
 
-      def initialize(node_config, data_disks_db)
+      def initialize(node_config, data_disks_db, wait_params={})
         super(node_config, data_disks_db)
 
         @compute_connection_opts = {
@@ -30,6 +30,11 @@ module Dopv
           'numCPUs'       => cores,
           'memoryMB'      => memory.mebibytes.to_i
         }
+
+        @wait_params = {
+          :maxtime        => 300,
+          :delay          => 10
+        }.merge(wait_params)
       end
 
       private
@@ -40,6 +45,20 @@ module Dopv
 
       def timezone
         super || '085'
+      end
+
+      def timezone_to_index(timezone)
+        lookup_table = {
+          'Europe/Zurich'         => 110,
+          :default                => 110
+        }
+
+        unless timezone.match(/^[1-9][0-9][0-9]$/)
+          (lookup_table.key? timezone) ?
+            lookup_table[timezone].to_s : lookup_table[:default].to_s
+        else
+          timezone
+        end
       end
 
       def node_instance_stopped?(node_instance)
@@ -53,6 +72,25 @@ module Dopv
           'power_on'  => false,
           'wait'      => true))
         compute_provider.servers.get(vm['new_vm']['id'])
+      end
+
+      def customization_domain_credential(domain)
+        credentials.find { |c| c.type == :username_password && c.username.start_with?(domain) }
+      end
+
+      def customization_domain?(domain)
+        cred = customization_domain_credential(domain)
+        !cred.nil?
+      end
+
+      def customization_domain_password(domain)
+        cred = customization_domain_credential(domain)
+        cred.nil? ? nil : cred.password
+      end
+
+      def customization_domain_username(domain)
+        cred = customization_domain_credential(domain)
+        cred.nil? ? nil : cred.username.split('\\').last
       end
 
       def customize_node_instance(node_instance)
@@ -81,35 +119,61 @@ module Dopv
 
         # Identity settings
         identity_settings = case guest_id_to_os_family(node_instance)
+
                             when :linux
+
                               RbVmomi::VIM::CustomizationLinuxPrep.new(
                                 :domain => domainname,
                                 :hostName => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname)
                               )
+
                             when :windows
+
                               password_settings = (RbVmomi::VIM::CustomizationPassword.new(
                                 :plainText => true,
                                 :value => administrator_password
                               ) rescue nil)
+
+                              # Declare identification
+                              domain ||= customization_domain?(domainname) ? domainname : nil
+                              workgroup ||= nil
+                              if domain
+                                customization_domain_password_settings = (RbVmomi::VIM::CustomizationPassword.new(
+                                  :plainText => true,
+                                  :value => customize_domain_password(domain)
+                                ) rescue nil)
+                                customization_id = RbVmomi::VIM::CustomizationIdentification.new(
+                                  :joinDomain => domain,
+                                  :domainAdmin => customization_domain_username(domain),
+                                  :domainAdminPassword => customization_domain_password_settings
+                                )
+                              elsif workgroup
+                                customization_id = RbVmomi::VIM::CustomizationIdentification.new(
+                                  :joinWorkgroup => workgroup
+                                )
+                              else
+                                customization_id = RbVmomi::VIM::CustomizationIdentification.new(
+                                  :domainAdmin => nil,
+                                  :domainAdminPassword => nil,
+                                  :joinDomain => nil
+                                )
+                              end
+
                               RbVmomi::VIM::CustomizationSysprep.new(
                                 :guiRunOnce => nil,
                                 :guiUnattended => RbVmomi::VIM::CustomizationGuiUnattended.new(
                                   :autoLogon => false,
                                   :autoLogonCount => 1,
                                   :password => password_settings,
-                                  :timeZone => timezone
-                              ),
-                                :identification => RbVmomi::VIM::CustomizationIdentification.new(
-                                  :domainAdmin => nil,
-                                  :domainAdminPassword => nil,
-                                  :joinDomain => nil
-                              ),
+                                  :timeZone => timezone_to_index(timezone)
+                                ),
+                                :identification => customization_id,
                                 :userData => RbVmomi::VIM::CustomizationUserData.new(
                                   :computerName => RbVmomi::VIM::CustomizationFixedName.new(:name => hostname),
                                   :fullName => administrator_fullname,
                                   :orgName => organization_name,
-                                  :productId => product_id
-                              )
+                                  :productId => (!product_id ? '' : product_id)
+                                )
                               )
                             else
                               raise ProviderError, "Unsupported guest OS type"
@@ -132,6 +196,11 @@ module Dopv
         customization_spec = super(node_instance)
         customize_node_task(node_instance, customization_spec)
         node_instance.start
+      end
+
+      def stop_node_instance(node_instance)
+        super(node_instance)
+        node_instance.wait_for(@wait_params[:maxtime]){power_state.to_sym == :poweredOff}
       end
 
       def add_node_nics(node_instance)
@@ -162,7 +231,7 @@ module Dopv
           :datastore => config.pool,
           :size => config.size.kibibytes.to_i,
           :mode => 'persistent',
-          :thin => true
+          :thin => config.thin?
         )
         node_instance.volumes.reload
         volume.name = config.name
@@ -290,30 +359,41 @@ module Dopv
         @provider_pubkey_hash
       end
 
-      def get_node_ip_addresses(node_instance, params={})
+      def get_node_ip_addresses(node_instance)
         begin
           raise ProviderError, "VMware Tools not installed" unless node_instance.tools_installed?
-          params = {:maxtime => 300, :delay => 10}.merge(params)
-          ::Dopv::log.debug("Node #{nodename}: Waiting on VMware Tools for #{params[:maxtime]} seconds.")
+
+          ::Dopv::log.debug("Node #{nodename}: Waiting on VMware Tools for #{@wait_params[:maxtime]} seconds.")
           reload_node_instance(node_instance)
-          node_instance.wait_for(params[:maxtime]){|vm| vm.ready?}
-          node_instance.wait_for(params[:maxtime]){|vm| vm.tools_running?}
+          node_instance.wait_for(@wait_params[:maxtime]){ready?}
+          node_instance.wait_for(@wait_params[:maxtime]){tools_running?}
+          raise ProviderError, "VMware Tools Version not supported" if node_instance.tools_version.to_sym == :guestToolsUnmanaged
+
           node_ref = compute_provider.send(:get_vm_ref, node_instance.id)
           node_ref_guest_net = nil
           start_time = Time.now.to_f
-          while (Time.now.to_f - start_time) < params[:maxtime]
+          is_connected = false
+          is_windows = guest_id_to_os_family(node_instance) == :windows
+          node_ref.guest.net.each do |i| is_connected ||= i.connected end
+          raise ProviderError, "No connected network interface available" unless is_connected
+
+          while (Time.now.to_f - start_time) < @wait_params[:maxtime]
             unless node_ref.guest_ip
-              sleep params[:delay]
+              sleep @wait_params[:delay]
             else
-              node_ref_guest_net = node_ref.guest.net
-              break
+              node_ref_guest_net = node_ref.guest.net.map(&:ipAddress).flatten.uniq.compact.select{|i| i.match(Resolv::IPv4::Regex) && !(i.start_with?('169.254.') && is_windows)}
+              unless node_ref_guest_net.any?
+                sleep @wait_params[:delay]
+              else
+                break
+              end
             end
           end
           raise ProviderError, "VMware Tools not ready yet" unless node_ref_guest_net
-          node_ref_guest_net.map(&:ipAddress).flatten.uniq.compact
+          node_ref_guest_net
 
         rescue Exception => e
-          ::Dopv::log.debug("Node #{nodename}: Unable to get all IP Addresses, Error:  #{e.message}.")
+          ::Dopv::log.debug("Node #{nodename}: Unable to obtain IP Addresses, Error: #{e.message}.")
           [node_instance.public_ip_address].compact
         end
       end
