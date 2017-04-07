@@ -1,4 +1,4 @@
-# 0.12.0 unreleased
+# 0.12.0 07.04.2017
 ## [vsphere]
  * Improve `destroy_node`
    * Waiting for poweredOff vm state
