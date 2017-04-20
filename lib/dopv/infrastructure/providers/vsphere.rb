@@ -1,6 +1,7 @@
 require 'rbvmomi'
 require 'digest/sha2'
 require 'fog'
+require 'resolv'
 
 module Dopv
   module Infrastructure
@@ -8,7 +9,7 @@ module Dopv
     class Vsphere < Base
       extend Forwardable
 
-      def_delegators :@plan, :product_id, :organization_name, :domain, :workgroup
+      def_delegators :@plan, :product_id, :organization_name, :workgroup, :thin_clone
 
       def initialize(node_config, data_disks_db, wait_params={})
         super(node_config, data_disks_db)
@@ -68,9 +69,15 @@ module Dopv
       def create_node_instance
         ::Dopv::log.info("Node #{nodename}: Creating node instance.")
         @node_creation_opts['datastore'] = infrastructure_properties.default_pool unless infrastructure_properties.default_pool.nil?
-        vm = compute_provider.vm_clone(@node_creation_opts.merge(
-          'power_on'  => false,
-          'wait'      => true))
+        @node_creation_opts['transform'] = thin_clone ? :sparse : :flat unless thin_clone.nil?
+
+        vm = compute_provider.vm_clone(
+          @node_creation_opts.merge(
+            'power_on'  => false,
+            'wait'      => true
+          )
+        )
+
         compute_provider.servers.get(vm['new_vm']['id'])
       end
 
@@ -140,7 +147,7 @@ module Dopv
                               if domain
                                 customization_domain_password_settings = (RbVmomi::VIM::CustomizationPassword.new(
                                   :plainText => true,
-                                  :value => customize_domain_password(domain)
+                                  :value => customization_domain_password(domain)
                                 ) rescue nil)
                                 customization_id = RbVmomi::VIM::CustomizationIdentification.new(
                                   :joinDomain => domain,
@@ -361,6 +368,7 @@ module Dopv
 
       def get_node_ip_addresses(node_instance)
         begin
+          is_windows = guest_id_to_os_family(node_instance) == :windows
           raise ProviderError, "VMware Tools not installed" unless node_instance.tools_installed?
 
           ::Dopv::log.debug("Node #{nodename}: Waiting on VMware Tools for #{@wait_params[:maxtime]} seconds.")
@@ -373,7 +381,6 @@ module Dopv
           node_ref_guest_net = nil
           start_time = Time.now.to_f
           is_connected = false
-          is_windows = guest_id_to_os_family(node_instance) == :windows
           node_ref.guest.net.each do |i| is_connected ||= i.connected end
           raise ProviderError, "No connected network interface available" unless is_connected
 
@@ -394,7 +401,7 @@ module Dopv
 
         rescue Exception => e
           ::Dopv::log.debug("Node #{nodename}: Unable to obtain IP Addresses, Error: #{e.message}.")
-          [node_instance.public_ip_address].compact
+          [node_instance.public_ip_address].compact.select{|i| i.match(Resolv::IPv4::Regex) && !(i.start_with?('169.254.') && is_windows)}
         end
       end
     end

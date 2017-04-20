@@ -1,3 +1,12 @@
+# 0.12.1 unreleased
+## [vsphere]
+ * Some minor fixes and improvements
+   * Fix typo customization_domain_password in `customize_node_instance`
+   * Addition filtering apipa and ipv6 in `get_node_ip_addresses`
+   * Add possibility to transform disks during clone from template (see plan node property thin_clone)
+   * Add missing requires
+   * Cleanup unused delegators
+
 # 0.12.0 07.04.2017
 ## [vsphere]
  * Improve `destroy_node`
