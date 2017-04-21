@@ -1,4 +1,7 @@
-# 0.13.0 unreleased
+# 0.13.0 24.04.2017
+## [deps]
+   * Update `dop_common`
+
 ## [vsphere]
  * Some minor fixes and improvements
    * Fix typo customization_domain_password in `customize_node_instance`
