@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    dopv (0.11.0)
-      dop_common (~> 0.13, >= 0.13.0)
+    dopv (0.13.0)
+      dop_common (~> 0.14, >= 0.14.0)
       fog (~> 1.36.0)
       fog-google (< 0.1.1)
       fog-profitbricks (~> 0.0.5)
@@ -25,7 +25,7 @@ GEM
     docile (1.1.5)
     domain_name (0.5.20170404)
       unf (>= 0.0.5, < 1.0.0)
-    dop_common (0.13.0)
+    dop_common (0.14.0)
       hashdiff (~> 0.3, >= 0.3.1)
       hiera (~> 3)
       lockfile (~> 2)
@@ -202,7 +202,7 @@ GEM
       builder
       nokogiri (>= 1.4.1)
       trollop
-    rest-client (2.0.1)
+    rest-client (2.0.2)
       http-cookie (>= 1.0.2, < 2.0)
       mime-types (>= 1.16, < 4.0)
       netrc (~> 0.8)
@@ -210,7 +210,7 @@ GEM
       rspec-core (~> 3.5.0)
       rspec-expectations (~> 3.5.0)
       rspec-mocks (~> 3.5.0)
-    rspec-command (1.0.1)
+    rspec-command (1.0.2)
       mixlib-shellout (~> 2.0)
       rspec (~> 3.2)
       rspec-its (~> 1.2)
@@ -237,7 +237,7 @@ GEM
     trollop (2.1.2)
     unf (0.1.4)
       unf_ext
-    unf_ext (0.0.7.2)
+    unf_ext (0.0.7.4)
     xml-simple (1.1.5)
 
 PLATFORMS
