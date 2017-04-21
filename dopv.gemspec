@@ -44,7 +44,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "fog-profitbricks", "~> 0.0.5" # fog dependency but fog-profitbricks > 0.5 requires ruby 2.x
   spec.add_dependency "fog", "~> 1.36.0"
   spec.add_dependency "gli", "~> 2.13.1"
-  spec.add_dependency "dop_common", "~> 0.13", '>= 0.13.0'
+  spec.add_dependency "dop_common", "~> 0.14", '>= 0.14.0'
   spec.add_dependency 'parallel', '~> 1'
   if RUBY_VERSION < "2"
     spec.add_dependency "rest-client", "< 2.0"
