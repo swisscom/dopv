@@ -1,11 +1,11 @@
-# 0.12.1 unreleased
+# 0.13.0 unreleased
 ## [vsphere]
  * Some minor fixes and improvements
    * Fix typo customization_domain_password in `customize_node_instance`
    * Addition filtering apipa and ipv6 in `get_node_ip_addresses`
-   * Add possibility to transform disks during clone from template (see plan node property thin_clone)
+   * Add ability to transform disks during clone from template (see plan node property thin_clone)
    * Add missing requires
-   * Cleanup unused delegators
+   * Cleanup unnecessary delegators
 
 # 0.12.0 07.04.2017
 ## [vsphere]
@@ -15,7 +15,7 @@
    * Filtering apipa and ipv6
    * Skipping if vm tools unmanaged or has no connected guest network interface
  * Improve `customize_node_instance` windows sysprep
-   * Add possibility to join domain or workgroup
+   * Add ability to join domain or workgroup
  * Some minor fixes and improvements
    * `@wait_params` to instance
    * Handling of properties thin/thick provisioning, timezone and product_id
