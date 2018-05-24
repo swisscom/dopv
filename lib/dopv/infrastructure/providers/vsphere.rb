@@ -314,8 +314,16 @@ module Dopv
       def guest_id_to_os_family(node_instance)
         # Based on http://pubs.vmware.com/vsphere-50/index.jsp?topic=/com.vmware.wssdk.apiref.doc_50/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
         lookup_table = {
+          :asianux8_64Guest       => :linux,
+          :centos8_64Guest        => :linux,
+          :darwin17_64Guest       => :linux,
+          :darwin18_64Guest       => :linux,
           :debian6_64Guest        => :linux,
           :debian6_Guest          => :linux,
+          :freebsd11Guest         => :linux,
+          :freebsd11_64Guest      => :linux,
+          :freebsd12Guest         => :linux,
+          :freebsd12_64Guest      => :linux,
           :rhel4_64Guest          => :linux,
           :rhel4Guest             => :linux,
           :rhel5_64Guest          => :linux,
@@ -324,8 +332,17 @@ module Dopv
           :rhel6Guest             => :linux,
           :rhel7_64Guest          => :linux,
           :rhel7Guest             => :linux,
-          :oracleLinux64Guest     => :linux,
+          :rhel8_64Guest          => :linux,
+          :sles11_64Guest         => :linux,
+          :sles12_64Guest         => :linux,
+          :sles13_64Guest         => :linux,
+          :sles14_64Guest         => :linux,
+          :sles15_64Guest         => :linux,
           :oracleLinuxGuest       => :linux,
+          :oracleLinux64Guest     => :linux,
+          :oracleLinux8_64Guest   => :linux,
+          :other4xLinux64Guest    => :linux,
+          :other4xLinuxGuest      => :linux,
           :ubuntu64Guest          => :linux,
           :ubuntuGuest            => :linux,
           :windows7_64Guest       => :windows,
@@ -333,7 +350,11 @@ module Dopv
           :windows7Server64Guest  => :windows,
           :windows8_64Guest       => :windows,
           :windows8Guest          => :windows,
-          :windows8Server64Guest  => :windows
+          :windows8Server64Guest  => :windows,
+          :'windows7srv-64'       => :windows,
+          :'windows8srv-64'       => :windows,
+          :'windows9srv-64'       => :windows,
+          :'windows10srv-64'      => :windows
         }
 
         node_instance.guest_id ?

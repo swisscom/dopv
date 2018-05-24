@@ -3,6 +3,9 @@
 ## [deps]
  * Update of `dop_common`
 
+## [vsphere]
+ * Add new guest os types
+
 # 0.13.0 24.04.2017
 
 ## [deps]
