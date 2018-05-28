@@ -56,26 +56,29 @@ SYNOPSIS
     dopv [global options] command [command options] [arguments...]
 
 VERSION
-    0.7.0
+    0.14.0
 
 GLOBAL OPTIONS
-    --help                         - Show this message
-    --logfile, -l path_to_log_file - Log file (default: none)
-    --[no-]trace, -t               - Show stacktrace on crash
-    --verbosity, -v level          - Verbosity of the command line tool (default: info)
-    --version                      - Display the program version
+    --help                    - Show this message
+    --log_dir=LOGDIR          - Directory for the log files (default: $home/.dop/log)
+    --log_level, -l LOGLEVEL  - Log level for the logfiles (default: DEBUG)
+    --plan_store_dir, -s DIR  - Specify the directory where the plans and their state will be stored (default: $home/.dop/cache)
+    --[no-]trace, -t          - Show stacktrace on crash
+    --verbosity, -v Verbosity - Verbosity of the command line tool (default: INFO)
+    --version                 - Display the program version
 
 COMMANDS
-    add      - Add a new plan file to the plan cache
-    deploy   - Deploy a plan
-    export   - Export the internal disk state into a local diskdb file
+    add      - Add a new plan file to the plan store
+    deploy   - Deploy a plan.
+    export   - Export the internal data disks state into a local file
     help     - Shows a list of commands or help for one command
-    import   - Import a diskdb file into the internal state store
-    list     - Show the list of plans in the plan store
-    remove   - Remove an existing plan from the plan cache
-    undeploy - Undeploy a plan
+    import   - Import data disks from a file into internal state store of the given plan
+    list     - List plans stored in the plan store
+    refresh  - Refresh a plan.
+    remove   - Remove existing plan from the plan store
+    undeploy - Undeploy a plan.
     update   - Update the plan and/or the plan state for a given plan yaml or plan name.
-    validate - Validate plan file
+    validate - Validate a plan file.
 ```
 
 #### Validating a plan
