@@ -351,6 +351,8 @@ module Dopv
           :windows8_64Guest       => :windows,
           :windows8Guest          => :windows,
           :windows8Server64Guest  => :windows,
+          :windows9Guest          => :windows,
+          :windows9Server64Guest  => :windows,
           :'windows7srv-64'       => :windows,
           :'windows8srv-64'       => :windows,
           :'windows9srv-64'       => :windows,
