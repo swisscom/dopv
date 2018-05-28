@@ -3,7 +3,6 @@ require 'uri'
 require 'fog'
 require 'open3'
 require 'dop_common/utils'
-require 'pry-debugger'
 
 module Dopv
   module Infrastructure
