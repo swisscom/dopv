@@ -9,7 +9,7 @@ module Dopv
     class Vsphere < Base
       extend Forwardable
 
-      def_delegators :@plan, :product_id, :organization_name, :workgroup, :thin_clone
+      def_delegators :@plan, :product_id, :organization_name, :workgroup, :thin_clone, :tags
 
       def initialize(node_config, data_disks_db, wait_params={})
         super(node_config, data_disks_db)
@@ -135,6 +135,9 @@ module Dopv
                               )
 
                             when :windows
+
+                              raise ProviderError, "credentials 'Administrator' is missing in plan" unless administrator_password
+                              raise ProviderError, "'organization_name' is missing in plan" unless organization_name
 
                               password_settings = (RbVmomi::VIM::CustomizationPassword.new(
                                 :plainText => true,
@@ -351,8 +354,12 @@ module Dopv
           :windows8_64Guest       => :windows,
           :windows8Guest          => :windows,
           :windows8Server64Guest  => :windows,
+          :windows9_64Guest       => :windows,
           :windows9Guest          => :windows,
           :windows9Server64Guest  => :windows,
+          :windows10_64Guest      => :windows,
+          :windows10Guest         => :windows,
+          :windows10Server64Guest => :windows,
           :'windows7srv-64'       => :windows,
           :'windows8srv-64'       => :windows,
           :'windows9srv-64'       => :windows,
@@ -425,6 +432,55 @@ module Dopv
         rescue Exception => e
           ::Dopv::log.debug("Node #{nodename}: Unable to obtain IP Addresses, Error: #{e.message}.")
           [node_instance.public_ip_address].compact.select{|i| i.match(Resolv::IPv4::Regex) && !(i.start_with?('169.254.') && is_windows)}
+        end
+      end
+
+      def refresh_node_instance(node_instance)
+        return unless tags
+
+        begin
+          require 'json'
+          require 'rest-client'
+
+          ::Dopv::log.debug("Node #{nodename}: Trying to associate tags: #{tags} (requires minimum VMware vSphere 6.0).")
+
+          parse_json_response_block = Proc.new do |response, request, result|
+            JSON.parse(response).fetch('value')
+          end
+
+          base_uri = "https://#{provider_host}:#{provider_port}/rest/com/vmware/cis"
+          session_header = {'vmware-use-header-authn' => ('0'..'z').to_a.shuffle.first(32).join, 'Content-Type' => 'application/json', 'Accept' => 'application/json'}
+
+          session_token = RestClient::Request.execute method: :post, url: "#{base_uri}/session", user: provider_username, password: provider_password, headers: session_header, verify_ssl: false, &parse_json_response_block
+          session_header.merge!({'vmware-api-session-id' => session_token})
+          session_header.merge!({:cookies => {'vmware-api-session-id' => session_header.fetch('vmware-api-session-id')}})
+
+          # search tags
+          found_tags = []
+          all_tags = RestClient::Request.execute method: :get, url: "#{base_uri}/tagging/tag", headers: session_header, verify_ssl: false, &parse_json_response_block
+
+          all_tags.each do |tag_id|
+            tag = RestClient::Request.execute method: :get, url: "#{base_uri}/tagging/tag/id:#{tag_id}", headers: session_header, verify_ssl: false, &parse_json_response_block
+            if tags.include?(tag.fetch('name'))
+              ::Dopv::log.debug("Node #{nodename}: Tag '#{tag.fetch('name')}' found.")
+              found_tags << tag
+            end
+          end
+
+          # ensure all tags found
+          tags.each do |tag_name|
+            result = found_tags.select { |tag| tag.fetch('name') == tag_name }
+            ::Dopv::log.warn("Node #{nodename}: Tag '#{tag_name}' not found! (Tag created in vSphere? User '#{provider_username}' not authorized?)") unless result
+          end
+
+          found_tags.each do |tag|
+            payload = {'object_id' => {'type' => 'VirtualMachine', 'id' => node_instance.mo_ref}}.to_json
+            ::Dopv::log.debug("Node #{nodename}: Associate tag '#{tag.fetch('name')}' to '#{node_instance.mo_ref}'.")
+            _assign = RestClient::Request.execute method: :post, url: "#{base_uri}/tagging/tag-association/id:#{tag.fetch('id')}?~action=attach", headers: session_header, verify_ssl: false, payload: payload
+          end
+
+        rescue Exception => e
+          ::Dopv::log.debug("Node #{nodename}: Unable to assign tags, Error: #{e.message}.")
         end
       end
     end

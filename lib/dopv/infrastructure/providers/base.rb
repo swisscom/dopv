@@ -3,6 +3,7 @@ require 'uri'
 require 'fog'
 require 'open3'
 require 'dop_common/utils'
+require 'pry-debugger'
 
 module Dopv
   module Infrastructure
@@ -58,6 +59,7 @@ module Dopv
             start_node_instance(node_instance)
             execute_hook(:post_create_vm, true)
             record_node_instance(node_instance)
+            refresh_node_instance(node_instance)
           else
             ::Dopv::log.warn("Node #{nodename}: Already exists.")
             # TODO: Ask Marcel what would be a purpose/use case of this
@@ -89,6 +91,7 @@ module Dopv
         node_instance = get_node_instance
         if node_instance
           record_node_instance(node_instance)
+          refresh_node_instance(node_instance)
         else
           erase_node_instance(node_instance)
         end
@@ -415,6 +418,9 @@ module Dopv
 
       def get_node_ip_addresses(node_instance)
         []
+      end
+
+      def refresh_node_instance(node_instance)
       end
     end
   end

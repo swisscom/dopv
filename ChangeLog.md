@@ -4,7 +4,9 @@
  * Update of `dop_common`
 
 ## [vsphere]
- * Add new guest os types
+ * Adds new guest os types
+ * Adds ability to associate tags (see plan node property tags)
+ * Improve validations
 
 # 0.13.0 24.04.2017
 
