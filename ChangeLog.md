@@ -1,3 +1,8 @@
+# 0.14.2 29.05.2018
+
+## [vsphere]
+ * Some minor fixes and improvements
+
 # 0.14.1 28.05.2018
 
 ## [deps]

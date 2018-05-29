@@ -405,7 +405,7 @@ module Dopv
           reload_node_instance(node_instance)
           node_instance.wait_for(@wait_params[:maxtime]){ready?}
           node_instance.wait_for(@wait_params[:maxtime]){tools_running?}
-          raise ProviderError, "VMware Tools Version not supported" if node_instance.tools_version.to_sym == :guestToolsUnmanaged
+          # raise ProviderError, "VMware Tools Version not supported" if node_instance.tools_version.to_sym == :guestToolsUnmanaged
 
           node_ref = compute_provider.send(:get_vm_ref, node_instance.id)
           node_ref_guest_net = nil
@@ -470,7 +470,7 @@ module Dopv
           # ensure all tags found
           tags.each do |tag_name|
             result = found_tags.select { |tag| tag.fetch('name') == tag_name }
-            ::Dopv::log.warn("Node #{nodename}: Tag '#{tag_name}' not found! (Tag created in vSphere? User '#{provider_username}' not authorized?)") unless result
+            ::Dopv::log.warn("Node #{nodename}: Tag '#{tag_name}' not found! (Tag created in '#{provider_host}'? User '#{provider_username}' not authorized?)") if result.empty?
           end
 
           found_tags.each do |tag|
