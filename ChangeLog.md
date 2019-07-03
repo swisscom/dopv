@@ -1,3 +1,13 @@
+# 0.14.6
+
+## [deps]
+   * Fix gem
+
+# 0.14.5
+
+## [deps]
+   * Fix `fog-core`
+   
 # 0.14.4
 
 ## [deps]
