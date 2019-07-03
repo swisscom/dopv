@@ -149,8 +149,8 @@ module Dopv
       def start_node_instance(node_instance)
       end
 
-      def stop_node_instance(node_instance)
-        super(node_instance)
+      def stop_node_instance(node_instance, options={})
+        super(node_instance, options)
         node_instance.wait_for { !ready? }
       end
 

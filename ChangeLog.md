@@ -1,3 +1,16 @@
+# 0.14.3
+
+## [deps]
+   * Update `dop_common`
+
+## [base]
+ * Add force_stop property to force shutdown during undeploy
+
+## [vsphere]
+ * Some minor fixes and improvements
+   * Fix cluster neglect
+   * Fix interface cleanup
+
 # 0.14.2 29.05.2018
 
 ## [vsphere]

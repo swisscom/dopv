@@ -104,8 +104,8 @@ module Dopv
       end
 
       # Redefine until regexp in Fog::Compute::Ovirt::Server#stopped? is fixed
-      def stop_node_instance(node_instance)
-        super
+      def stop_node_instance(node_instance, options={})
+        super(node_instance, options)
         node_instance.wait_for { status.downcase == 'down' }
       end
 

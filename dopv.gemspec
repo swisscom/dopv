@@ -38,7 +38,7 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'listen', '~> 3.0.8'
   spec.add_development_dependency 'guard-ctags-bundler'
   
-  spec.add_dependency 'dop_common', '~> 0.15', '>= 0.15.2'
+  spec.add_dependency 'dop_common', '~> 0.15', '>= 0.15.3'
   spec.add_dependency 'fog', '~> 1.36.0'
   spec.add_dependency 'gli', '~> 2.13.1'
   spec.add_dependency 'json', '~> 1.8'

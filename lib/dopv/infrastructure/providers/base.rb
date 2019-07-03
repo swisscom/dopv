@@ -20,7 +20,7 @@ module Dopv
 
       attr_reader :data_disks_db
       def_delegators :@plan, :nodename, :fqdn, :hostname, :domainname, :dns
-      def_delegators :@plan, :timezone
+      def_delegators :@plan, :timezone, :force_stop
       def_delegators :@plan, :full_clone?, :image, :cores, :memory, :storage, :flavor
       def_delegators :@plan, :infrastructure, :infrastructure_properties
       def_delegator :@plan, :interfaces, :interfaces_config
@@ -128,19 +128,19 @@ module Dopv
 
       def root_password
         cred = credentials.find { |c| c.type == :username_password && c.username == 'root' } if
-          @root_password.nil?
+            @root_password.nil?
         @root_password ||= cred.nil? ? nil : cred.password
       end
 
       def root_ssh_pubkeys
         cred = credentials.find_all { |c| c.type == :ssh_key && c.username == 'root' } if
-          @root_ssh_pubkeys.nil?
+            @root_ssh_pubkeys.nil?
         @root_ssh_pubkey ||= cred.empty? ? [] : cred.collect { |k| k.public_key }.uniq
       end
 
       def administrator_password
         cred = credentials.find { |c| c.type == :username_password && c.username == 'Administrator' } if
-          @administrator_password.nil?
+            @administrator_password.nil?
         @administrator_password ||= cred.nil? ? nil : cred.password
       end
 
@@ -180,12 +180,12 @@ module Dopv
       def template(filters={})
         raise ProviderError, "No template defined" unless image
         @template ||= if compute_provider.respond_to?(:templates)
-                         compute_provider.templates.all(filters).find { |t| t.name == image }
-                       elsif compute_provider.respond_to?(:images)
-                         compute_provider.images.all(filters).find { |t| t.name == image }
-                       else
-                         raise ProviderError, "The provider does not to have template/image collection"
-                       end
+                        compute_provider.templates.all(filters).find { |t| t.name == image }
+                      elsif compute_provider.respond_to?(:images)
+                        compute_provider.images.all(filters).find { |t| t.name == image }
+                      else
+                        raise ProviderError, "The provider does not to have template/image collection"
+                      end
         raise ProviderError, "No such template #{image}" unless @template
         @template
       end
@@ -225,7 +225,7 @@ module Dopv
 
       def destroy_node_instance(node_instance, destroy_data_volumes=false)
         if node_instance
-          stop_node_instance(node_instance)
+          stop_node_instance(node_instance, { 'force' => force_stop })
 
           volumes = data_disks_db.volumes
           volumes.each do |v|
@@ -265,12 +265,16 @@ module Dopv
         customize_node_instance(node_instance)
       end
 
-      def stop_node_instance(node_instance)
+      def stop_node_instance(node_instance, options={})
         reload_node_instance(node_instance)
         unless node_instance_stopped?(node_instance)
           ::Dopv::log.info("Node #{nodename}: Stopping node.")
           wait_for_task_completion(node_instance)
-          node_instance.stop
+          begin
+            node_instance.stop(options)
+          rescue ArgumentError
+            node_instance.stop
+          end
           reload_node_instance(node_instance)
         end
       end
