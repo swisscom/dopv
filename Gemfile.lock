@@ -1,9 +1,10 @@
 PATH
   remote: .
   specs:
-    dopv (0.14.7)
+    dopv (0.14.8)
       dop_common (~> 0.15, >= 0.15.3)
       fog (~> 1.36.0)
+      fog-xenserver (= 0.2.3)
       gli (~> 2.13.1)
       hashdiff (~> 0.3, = 0.3.8)
       json (~> 1.8)
@@ -133,7 +134,7 @@ GEM
     fog-voxel (0.1.0)
       fog-core
       fog-xml
-    fog-xenserver (0.3.0)
+    fog-xenserver (0.2.3)
       fog-core
       fog-xml
     fog-xml (0.1.3)
