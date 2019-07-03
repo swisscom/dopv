@@ -50,4 +50,8 @@ Gem::Specification.new do |spec|
   if RUBY_VERSION < '2'
     spec.add_dependency 'rest-client', '< 2.0'
   end
+
+  if RUBY_VERSION < '2.3.0'
+    spec.add_dependency 'nokogiri', '= 1.6.8.1'
+  end
 end
