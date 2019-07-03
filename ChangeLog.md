@@ -1,3 +1,8 @@
+# 0.14.4
+
+## [deps]
+   * Fix `nokogiri`
+   
 # 0.14.3
 
 ## [deps]
