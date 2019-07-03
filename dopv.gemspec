@@ -46,13 +46,13 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'rbovirt', '~> 0.1', '>= 0.1.3'
   spec.add_dependency 'rbvmomi', '~> 1.8.2'
   spec.add_dependency 'parallel', '~> 1'
+  spec.add_dependency 'hashdiff', '~> 0.3', '0.3.8'
 
   if RUBY_VERSION < '2'
     spec.add_dependency 'rest-client', '< 2.0'
   end
 
   if RUBY_VERSION < '2.3.0'
-    spec.add_dependency 'nokogiri', '< 1.7.0'
-    spec.add_dependency 'fog-core', '< 1.44.0'
+    spec.add_dependency 'nokogiri', '1.8.5'
   end
 end
