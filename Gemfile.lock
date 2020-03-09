@@ -28,7 +28,7 @@ GEM
       lockfile (~> 2)
       rb-inotify (~> 0.9)
     dry-inflector (0.2.0)
-    excon (0.71.0)
+    excon (0.72.0)
     ffi (1.11.1)
     fission (0.5.0)
       CFPropertyList (~> 2.2)
