@@ -55,5 +55,7 @@ Gem::Specification.new do |spec|
   if RUBY_VERSION < '2.3.0'
     spec.add_dependency 'nokogiri', '1.8.5'
     spec.add_dependency 'fog-xenserver', '0.2.3'
+  else
+    spec.add_dependency 'nokogiri', '>= 1.10.8'
   end
 end
