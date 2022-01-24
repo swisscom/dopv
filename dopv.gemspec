@@ -56,6 +56,6 @@ Gem::Specification.new do |spec|
     spec.add_dependency 'nokogiri', '1.8.5'
     spec.add_dependency 'fog-xenserver', '0.2.3'
   else
-    spec.add_dependency 'nokogiri', '>= 1.10.8'
+    spec.add_dependency 'nokogiri', '>= 1.12.5'
   end
 end
