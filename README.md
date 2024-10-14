@@ -1,3 +1,6 @@
+> [!NOTE]
+> DEPRECATED - no longer maintained!
+
 # Dopv
 
 Dopv orchestrates deployments of nodes. A node can be a virtual machine or a bare-metal compute node.
